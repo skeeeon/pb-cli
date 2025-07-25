@@ -49,6 +49,17 @@ func (m *Manager) GetContextPath(name string) string {
 	return filepath.Join(m.GetContextDir(name), "context.yaml")
 }
 
+// GetBackupDir returns the backup directory for a specific context
+func (m *Manager) GetBackupDir(name string) string {
+	return filepath.Join(m.GetContextDir(name), "backups")
+}
+
+// EnsureBackupDir creates the backup directory for a context if it doesn't exist
+func (m *Manager) EnsureBackupDir(name string) error {
+	backupDir := m.GetBackupDir(name)
+	return os.MkdirAll(backupDir, 0755)
+}
+
 // LoadGlobalConfig loads the global configuration
 func (m *Manager) LoadGlobalConfig() (*GlobalConfig, error) {
 	configPath := m.GetGlobalConfigPath()
@@ -135,6 +146,11 @@ func (m *Manager) SaveContext(context *Context) error {
 		return fmt.Errorf("failed to create context directory: %w", err)
 	}
 
+	// Create backup directory for the context
+	if err := m.EnsureBackupDir(context.Name); err != nil {
+		return fmt.Errorf("failed to create backup directory: %w", err)
+	}
+
 	// Save context configuration
 	contextPath := m.GetContextPath(context.Name)
 	
@@ -187,7 +203,7 @@ func (m *Manager) DeleteContext(name string) error {
 		return fmt.Errorf("context '%s' not found", name)
 	}
 
-	// Remove the entire context directory
+	// Remove the entire context directory (including backups)
 	if err := os.RemoveAll(contextDir); err != nil {
 		return fmt.Errorf("failed to delete context directory: %w", err)
 	}

@@ -1,8 +1,11 @@
 package pocketbase
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"pb-cli/internal/utils"
 )
 
 // Collection represents a PocketBase collection definition
@@ -102,11 +105,23 @@ func (r Record) GetFloat(field string) float64 {
 	return 0
 }
 
-// GetTime returns a time field value
+// GetTime returns a time field value with multiple format support
 func (r Record) GetTime(field string) *time.Time {
 	if timeStr, ok := r[field].(string); ok {
-		if t, err := time.Parse(time.RFC3339, timeStr); err == nil {
-			return &t
+		// Try multiple time formats that PocketBase might use
+		formats := []string{
+			time.RFC3339,                    // "2006-01-02T15:04:05Z07:00"
+			time.RFC3339Nano,                // "2006-01-02T15:04:05.999999999Z07:00"
+			"2006-01-02 15:04:05.999Z",      // PocketBase format with space
+			"2006-01-02 15:04:05Z",          // PocketBase format without microseconds
+			"2006-01-02T15:04:05.999Z",      // Standard with microseconds
+			"2006-01-02T15:04:05Z",          // Standard without microseconds
+		}
+		
+		for _, format := range formats {
+			if t, err := time.Parse(format, timeStr); err == nil {
+				return &t
+			}
 		}
 	}
 	return nil
@@ -180,6 +195,66 @@ func (r Record) GetDisplayName() string {
 	}
 	
 	return "Unknown"
+}
+
+// Backup Management Types
+
+// Backup represents a PocketBase backup
+type Backup struct {
+	Key      string `json:"key"`
+	Size     int64  `json:"size"`
+	Modified PBTime `json:"modified"`
+}
+
+// PBTime handles PocketBase's time format
+type PBTime struct {
+	time.Time
+}
+
+// UnmarshalJSON implements custom JSON unmarshaling for PocketBase time format
+func (pbt *PBTime) UnmarshalJSON(data []byte) error {
+	// Remove quotes from JSON string
+	timeStr := string(data)
+	if len(timeStr) >= 2 && timeStr[0] == '"' && timeStr[len(timeStr)-1] == '"' {
+		timeStr = timeStr[1 : len(timeStr)-1]
+	}
+
+	// Try multiple time formats that PocketBase might use
+	formats := []string{
+		"2006-01-02 15:04:05.999Z",      // PocketBase format with space and microseconds
+		"2006-01-02 15:04:05Z",          // PocketBase format with space, no microseconds
+		time.RFC3339,                    // "2006-01-02T15:04:05Z07:00"
+		time.RFC3339Nano,                // "2006-01-02T15:04:05.999999999Z07:00"
+		"2006-01-02T15:04:05.999Z",      // Standard with microseconds
+		"2006-01-02T15:04:05Z",          // Standard without microseconds
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, timeStr); err == nil {
+			pbt.Time = t
+			return nil
+		}
+	}
+
+	return fmt.Errorf("unable to parse time: %s", timeStr)
+}
+
+// MarshalJSON implements custom JSON marshaling
+func (pbt PBTime) MarshalJSON() ([]byte, error) {
+	return json.Marshal(pbt.Time.Format(time.RFC3339))
+}
+
+// BackupsList represents a list of backups
+type BackupsList []Backup
+
+// GetHumanSize returns a human-readable size string
+func (b *Backup) GetHumanSize() string {
+	return utils.FormatBytes(b.Size)
+}
+
+// GetFormattedDate returns a formatted date string
+func (b *Backup) GetFormattedDate() string {
+	return b.Modified.Time.Format("2006-01-02 15:04:05")
 }
 
 // ValidationError represents a field validation error

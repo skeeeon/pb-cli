@@ -3,6 +3,9 @@ package pocketbase
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -336,4 +339,265 @@ func (c *Client) CollectionExists(collection string) bool {
 	
 	err := c.ValidateCollection(collection)
 	return err == nil
+}
+
+// Backup Management Methods
+
+// ListBackups retrieves all available backups
+func (c *Client) ListBackups() (BackupsList, error) {
+	if !c.IsAuthenticated() {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug("Listing backups from PocketBase")
+
+	resp, err := c.makeRequest("GET", "backups", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list backups: %w", err)
+	}
+
+	var backups BackupsList
+	if err := json.Unmarshal(resp.Body(), &backups); err != nil {
+		return nil, fmt.Errorf("failed to parse backups response: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Found %d backups", len(backups)))
+	return backups, nil
+}
+
+// CreateBackup creates a new backup
+func (c *Client) CreateBackup(name string) (*Backup, error) {
+	if !c.IsAuthenticated() {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Creating backup with name: %s", name))
+
+	var requestData map[string]interface{}
+	if name != "" {
+		requestData = map[string]interface{}{
+			"name": name,
+		}
+	}
+
+	resp, err := c.makeRequest("POST", "backups", requestData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create backup: %w", err)
+	}
+
+	var backup Backup
+	if err := json.Unmarshal(resp.Body(), &backup); err != nil {
+		return nil, fmt.Errorf("failed to parse backup response: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Created backup: %s", backup.Key))
+	return &backup, nil
+}
+
+// GetBackup gets information about a specific backup
+func (c *Client) GetBackup(backupKey string) (*Backup, error) {
+	if !c.IsAuthenticated() {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	backups, err := c.ListBackups()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, backup := range backups {
+		if backup.Key == backupKey {
+			return &backup, nil
+		}
+	}
+
+	return nil, fmt.Errorf("backup '%s' not found", backupKey)
+}
+
+// DownloadBackup downloads a backup file to the specified path
+func (c *Client) DownloadBackup(backupKey, outputPath string) error {
+	if !c.IsAuthenticated() {
+		return fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Downloading backup %s to %s", backupKey, outputPath))
+
+	// Create the output directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Make the download request
+	url := fmt.Sprintf("%s/api/backups/%s", c.baseURL, backupKey)
+	
+	resp, err := c.httpClient.R().
+		SetOutput(outputPath).
+		SetDoNotParseResponse(true).
+		Get(url)
+	
+	if err != nil {
+		return fmt.Errorf("failed to download backup: %w", err)
+	}
+
+	if resp.StatusCode() >= 400 {
+		return NewPocketBaseError(resp)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Downloaded backup to: %s", outputPath))
+	return nil
+}
+
+// DownloadBackupWithProgress downloads a backup with progress reporting
+func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progressCallback func(downloaded, total int64)) error {
+	if !c.IsAuthenticated() {
+		return fmt.Errorf("authentication required")
+	}
+
+	// Get backup info for size
+	backup, err := c.GetBackup(backupKey)
+	if err != nil {
+		return fmt.Errorf("failed to get backup info: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Downloading backup %s (%s) to %s", backupKey, backup.GetHumanSize(), outputPath))
+
+	// Create the output directory if it doesn't exist
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Create output file
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	// Make the download request
+	url := fmt.Sprintf("%s/api/backups/%s", c.baseURL, backupKey)
+	
+	resp, err := c.httpClient.R().
+		SetDoNotParseResponse(true).
+		Get(url)
+	
+	if err != nil {
+		return fmt.Errorf("failed to download backup: %w", err)
+	}
+	defer resp.RawBody().Close()
+
+	if resp.StatusCode() >= 400 {
+		return NewPocketBaseError(resp)
+	}
+
+	// Copy with progress
+	if progressCallback != nil {
+		_, err = io.Copy(outFile, &progressReader{
+			reader:   resp.RawBody(),
+			total:    backup.Size,
+			callback: progressCallback,
+		})
+	} else {
+		_, err = io.Copy(outFile, resp.RawBody())
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to save backup file: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Downloaded backup to: %s", outputPath))
+	return nil
+}
+
+// UploadBackup uploads a backup file
+func (c *Client) UploadBackup(filePath, backupName string, progressCallback func(uploaded, total int64)) (*Backup, error) {
+	if !c.IsAuthenticated() {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Uploading backup from %s", filePath))
+
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("backup file does not exist: %s", filePath)
+	}
+
+	// Determine backup key/name
+	key := backupName
+	if key == "" {
+		key = filepath.Base(filePath)
+	}
+
+	// Upload the file
+	resp, err := c.httpClient.R().
+		SetFile("backup", filePath).
+		Put(fmt.Sprintf("%s/api/backups/%s", c.baseURL, key))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload backup: %w", err)
+	}
+
+	if resp.StatusCode() >= 400 {
+		return nil, NewPocketBaseError(resp)
+	}
+
+	var backup Backup
+	if err := json.Unmarshal(resp.Body(), &backup); err != nil {
+		return nil, fmt.Errorf("failed to parse upload response: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Uploaded backup: %s", backup.Key))
+	return &backup, nil
+}
+
+// DeleteBackup deletes a backup
+func (c *Client) DeleteBackup(backupKey string) error {
+	if !c.IsAuthenticated() {
+		return fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Deleting backup: %s", backupKey))
+
+	endpoint := fmt.Sprintf("backups/%s", backupKey)
+	_, err := c.makeRequest("DELETE", endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete backup: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Deleted backup: %s", backupKey))
+	return nil
+}
+
+// RestoreBackup restores from a backup
+func (c *Client) RestoreBackup(backupKey string) error {
+	if !c.IsAuthenticated() {
+		return fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Restoring from backup: %s", backupKey))
+
+	endpoint := fmt.Sprintf("backups/%s/restore", backupKey)
+	_, err := c.makeRequest("POST", endpoint, nil)
+	if err != nil {
+		return fmt.Errorf("failed to restore backup: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Restored from backup: %s", backupKey))
+	return nil
+}
+
+// progressReader wraps an io.Reader and calls a progress callback
+type progressReader struct {
+	reader     io.Reader
+	total      int64
+	downloaded int64
+	callback   func(downloaded, total int64)
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.reader.Read(p)
+	pr.downloaded += int64(n)
+	if pr.callback != nil {
+		pr.callback(pr.downloaded, pr.total)
+	}
+	return n, err
 }

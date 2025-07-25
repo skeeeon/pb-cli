@@ -9,6 +9,7 @@ import (
 	"pb-cli/cmd/auth"
 	"pb-cli/cmd/collections"
 	"pb-cli/cmd/context"
+	"pb-cli/cmd/backup"
 	"pb-cli/internal/config"
 	"pb-cli/internal/resolver"
 )
@@ -92,7 +93,8 @@ func addCommands() {
 	// Collections CRUD commands
 	rootCmd.AddCommand(collections.CollectionsCmd)
 	
-	// Note: NATS commands removed
+	// Backup commands
+	rootCmd.AddCommand(backup.BackupCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.
