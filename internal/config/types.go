@@ -38,7 +38,7 @@ const (
 	OutputFormatTable = "table"
 )
 
-// PocketBase auth collection constants
+// PocketBase auth collection constants (common ones, but allows custom)
 const (
 	AuthCollectionUsers   = "users"
 	AuthCollectionAdmins  = "admins"
@@ -46,7 +46,7 @@ const (
 )
 
 // ValidateAuthCollection validates a PocketBase auth collection name
-// Note: This is more permissive than the original to allow any collection name
+// Note: This is permissive to allow any collection name since PocketBase supports custom auth collections
 func ValidateAuthCollection(collection string) error {
 	if collection == "" {
 		return fmt.Errorf("auth collection cannot be empty")

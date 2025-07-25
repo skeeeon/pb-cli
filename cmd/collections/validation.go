@@ -2,6 +2,7 @@ package collections
 
 import (
 	"fmt"
+	"strings"
 
 	"pb-cli/internal/utils"
 )
@@ -176,5 +177,3 @@ func contains(s, substr string) bool {
 			strings.Contains(strings.ToLower(s), strings.ToLower(substr))))
 }
 
-// Additional helper imports needed
-import "strings"

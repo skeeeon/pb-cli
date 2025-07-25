@@ -434,11 +434,3 @@ func confirmDeletion(collection, recordID string, record map[string]interface{})
 
 	return nil
 }
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
