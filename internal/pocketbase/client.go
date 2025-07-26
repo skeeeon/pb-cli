@@ -22,6 +22,11 @@ type Client struct {
 	authRecord map[string]interface{}
 }
 
+// FileTokenResponse represents the response from /api/files/token
+type FileTokenResponse struct {
+	Token string `json:"token"`
+}
+
 // NewClient creates a new PocketBase client
 func NewClient(baseURL string) *Client {
 	client := resty.New()
@@ -112,6 +117,29 @@ func (c *Client) makeRequest(method, endpoint string, body interface{}) (*resty.
 	}
 	
 	return resp, nil
+}
+
+// GetFileToken requests a file access token for protected file downloads
+func (c *Client) GetFileToken() (string, error) {
+	if !c.IsAuthenticated() {
+		return "", fmt.Errorf("authentication required")
+	}
+
+	utils.PrintDebug("Requesting file token for protected file access")
+
+	resp, err := c.makeRequest("POST", "files/token", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to get file token: %w", err)
+	}
+
+	var tokenResp FileTokenResponse
+	if err := json.Unmarshal(resp.Body(), &tokenResp); err != nil {
+		return "", fmt.Errorf("failed to parse file token response: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Received file token: %s...", tokenResp.Token[:10]))
+	
+	return tokenResp.Token, nil
 }
 
 // GetHealth checks the PocketBase server health
@@ -385,6 +413,38 @@ func (c *Client) CreateBackup(name string) (*Backup, error) {
 		return nil, fmt.Errorf("failed to create backup: %w", err)
 	}
 
+	// Handle 204 No Content response (successful backup creation with no body)
+	if resp.StatusCode() == 204 {
+		utils.PrintDebug("Backup created successfully (204 No Content)")
+		
+		// Since we don't get backup details in the response, we need to fetch it
+		// by listing backups and finding the most recent one
+		backups, err := c.ListBackups()
+		if err != nil {
+			return nil, fmt.Errorf("backup created but failed to retrieve details: %w", err)
+		}
+		
+		if len(backups) == 0 {
+			return nil, fmt.Errorf("backup created but no backups found")
+		}
+		
+		// Find the most recent backup (assuming it's the one we just created)
+		var mostRecent *Backup
+		for i := range backups {
+			if mostRecent == nil || backups[i].Modified.Time.After(mostRecent.Modified.Time) {
+				mostRecent = &backups[i]
+			}
+		}
+		
+		if mostRecent == nil {
+			return nil, fmt.Errorf("backup created but could not identify the new backup")
+		}
+		
+		utils.PrintDebug(fmt.Sprintf("Found most recent backup: %s", mostRecent.Key))
+		return mostRecent, nil
+	}
+
+	// Handle response with backup data (status 200/201)
 	var backup Backup
 	if err := json.Unmarshal(resp.Body(), &backup); err != nil {
 		return nil, fmt.Errorf("failed to parse backup response: %w", err)
@@ -414,7 +474,7 @@ func (c *Client) GetBackup(backupKey string) (*Backup, error) {
 	return nil, fmt.Errorf("backup '%s' not found", backupKey)
 }
 
-// DownloadBackup downloads a backup file to the specified path
+// DownloadBackup downloads a backup file to the specified path using file token authentication
 func (c *Client) DownloadBackup(backupKey, outputPath string) error {
 	if !c.IsAuthenticated() {
 		return fmt.Errorf("authentication required")
@@ -422,32 +482,68 @@ func (c *Client) DownloadBackup(backupKey, outputPath string) error {
 
 	utils.PrintDebug(fmt.Sprintf("Downloading backup %s to %s", backupKey, outputPath))
 
-	// Create the output directory if it doesn't exist
+	// Step 1: Get file access token
+	utils.PrintDebug("Requesting file access token...")
+	fileToken, err := c.GetFileToken()
+	if err != nil {
+		return fmt.Errorf("failed to get file access token: %w", err)
+	}
+
+	// Step 2: Create the output directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Make the download request
+	// Step 3: Create output file
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %w", err)
+	}
+	defer outFile.Close()
+
+	// Step 4: Download using file token
 	url := fmt.Sprintf("%s/api/backups/%s", c.baseURL, backupKey)
 	
-	resp, err := c.httpClient.R().
-		SetOutput(outputPath).
+	utils.PrintDebug(fmt.Sprintf("Downloading from URL: %s", url))
+	
+	// Create a fresh client without auth headers but with file token as query param
+	downloadClient := resty.New()
+	downloadClient.SetTimeout(30 * time.Second)
+	downloadClient.SetHeader("User-Agent", "pb-cli/0.1.0")
+	
+	resp, err := downloadClient.R().
+		SetQueryParam("token", fileToken).
 		SetDoNotParseResponse(true).
 		Get(url)
 	
 	if err != nil {
 		return fmt.Errorf("failed to download backup: %w", err)
 	}
+	defer resp.RawBody().Close()
 
 	if resp.StatusCode() >= 400 {
-		return NewPocketBaseError(resp)
+		return fmt.Errorf("download failed with status %d: %s", resp.StatusCode(), resp.Status())
 	}
 
-	utils.PrintDebug(fmt.Sprintf("Downloaded backup to: %s", outputPath))
+	utils.PrintDebug(fmt.Sprintf("Download response status: %d", resp.StatusCode()))
+	utils.PrintDebug(fmt.Sprintf("Content-Length: %s", resp.Header().Get("Content-Length")))
+
+	// Step 5: Copy response body to file
+	written, err := io.Copy(outFile, resp.RawBody())
+	if err != nil {
+		return fmt.Errorf("failed to save backup file: %w", err)
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Downloaded %d bytes to: %s", written, outputPath))
+	
+	if written == 0 {
+		return fmt.Errorf("downloaded file is empty")
+	}
+
 	return nil
 }
 
-// DownloadBackupWithProgress downloads a backup with progress reporting
+// DownloadBackupWithProgress downloads a backup with progress reporting using file token authentication
 func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progressCallback func(downloaded, total int64)) error {
 	if !c.IsAuthenticated() {
 		return fmt.Errorf("authentication required")
@@ -461,22 +557,37 @@ func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progre
 
 	utils.PrintDebug(fmt.Sprintf("Downloading backup %s (%s) to %s", backupKey, backup.GetHumanSize(), outputPath))
 
-	// Create the output directory if it doesn't exist
+	// Step 1: Get file access token
+	utils.PrintDebug("Requesting file access token...")
+	fileToken, err := c.GetFileToken()
+	if err != nil {
+		return fmt.Errorf("failed to get file access token: %w", err)
+	}
+
+	// Step 2: Create the output directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Create output file
+	// Step 3: Create output file
 	outFile, err := os.Create(outputPath)
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %w", err)
 	}
 	defer outFile.Close()
 
-	// Make the download request
+	// Step 4: Download using file token
 	url := fmt.Sprintf("%s/api/backups/%s", c.baseURL, backupKey)
 	
-	resp, err := c.httpClient.R().
+	utils.PrintDebug(fmt.Sprintf("Downloading from URL: %s", url))
+	
+	// Create a fresh client without auth headers but with file token as query param
+	downloadClient := resty.New()
+	downloadClient.SetTimeout(30 * time.Second)
+	downloadClient.SetHeader("User-Agent", "pb-cli/0.1.0")
+	
+	resp, err := downloadClient.R().
+		SetQueryParam("token", fileToken).
 		SetDoNotParseResponse(true).
 		Get(url)
 	
@@ -486,29 +597,35 @@ func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progre
 	defer resp.RawBody().Close()
 
 	if resp.StatusCode() >= 400 {
-		return NewPocketBaseError(resp)
+		return fmt.Errorf("download failed with status %d: %s", resp.StatusCode(), resp.Status())
 	}
 
-	// Copy with progress
+	// Step 5: Copy with progress
+	var written int64
 	if progressCallback != nil {
-		_, err = io.Copy(outFile, &progressReader{
+		written, err = io.Copy(outFile, &progressReader{
 			reader:   resp.RawBody(),
 			total:    backup.Size,
 			callback: progressCallback,
 		})
 	} else {
-		_, err = io.Copy(outFile, resp.RawBody())
+		written, err = io.Copy(outFile, resp.RawBody())
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to save backup file: %w", err)
 	}
 
-	utils.PrintDebug(fmt.Sprintf("Downloaded backup to: %s", outputPath))
+	utils.PrintDebug(fmt.Sprintf("Downloaded %d bytes to: %s", written, outputPath))
+	
+	if written == 0 {
+		return fmt.Errorf("downloaded file is empty")
+	}
+
 	return nil
 }
 
-// UploadBackup uploads a backup file
+// UploadBackup uploads a backup file using the correct PocketBase upload API
 func (c *Client) UploadBackup(filePath, backupName string, progressCallback func(uploaded, total int64)) (*Backup, error) {
 	if !c.IsAuthenticated() {
 		return nil, fmt.Errorf("authentication required")
@@ -516,30 +633,65 @@ func (c *Client) UploadBackup(filePath, backupName string, progressCallback func
 
 	utils.PrintDebug(fmt.Sprintf("Uploading backup from %s", filePath))
 
-	// Check if file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+	// Check if file exists and get file info
+	fileInfo, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
 		return nil, fmt.Errorf("backup file does not exist: %s", filePath)
 	}
-
-	// Determine backup key/name
-	key := backupName
-	if key == "" {
-		key = filepath.Base(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access backup file: %w", err)
 	}
 
-	// Upload the file
+	utils.PrintDebug(fmt.Sprintf("Uploading %d bytes from file: %s", fileInfo.Size(), filePath))
+
+	// Use the correct PocketBase upload endpoint with proper authentication
+	url := fmt.Sprintf("%s/api/backups/upload", c.baseURL)
+	
+	utils.PrintDebug(fmt.Sprintf("Upload URL: %s", url))
+	
+	// Upload using authenticated client with POST to /api/backups/upload
 	resp, err := c.httpClient.R().
-		SetFile("backup", filePath).
-		Put(fmt.Sprintf("%s/api/backups/%s", c.baseURL, key))
+		SetFile("file", filePath).  // Use "file" field name as per API docs
+		Post(url)                   // Use POST method as per API docs
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload backup: %w", err)
 	}
 
+	utils.PrintDebug(fmt.Sprintf("Upload response status: %d", resp.StatusCode()))
+
+	// Handle HTTP errors with proper PocketBase error parsing
 	if resp.StatusCode() >= 400 {
 		return nil, NewPocketBaseError(resp)
 	}
 
+	// Handle different response patterns
+	if resp.StatusCode() == 204 {
+		utils.PrintDebug("Backup uploaded successfully (204 No Content)")
+		
+		// For 204 responses, we need to determine the backup name
+		// If no custom name provided, use the original filename
+		uploadedName := backupName
+		if uploadedName == "" {
+			uploadedName = filepath.Base(filePath)
+		}
+		
+		// Try to fetch the uploaded backup info
+		backup, err := c.GetBackup(uploadedName)
+		if err != nil {
+			// If we can't get the specific backup, that's OK for 204 responses
+			// Return a basic backup info
+			utils.PrintDebug("Could not fetch uploaded backup details, returning basic info")
+			return &Backup{
+				Key:  uploadedName,
+				Size: fileInfo.Size(),
+			}, nil
+		}
+		
+		return backup, nil
+	}
+
+	// Handle 200/201 responses with backup data
 	var backup Backup
 	if err := json.Unmarshal(resp.Body(), &backup); err != nil {
 		return nil, fmt.Errorf("failed to parse upload response: %w", err)
