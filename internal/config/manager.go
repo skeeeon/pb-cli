@@ -322,3 +322,16 @@ func (m *Manager) ClearContextCollections(contextName string) error {
 	
 	return m.SaveContext(ctx)
 }
+
+// NewManagerWithBase creates a new configuration manager with a specific base directory.
+// This is primarily used for testing.
+func NewManagerWithBase(baseDir string) (*Manager, error) {
+	// Ensure the base config directory exists
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create base directory: %w", err)
+	}
+
+	return &Manager{
+		configDir: baseDir,
+	}, nil
+}

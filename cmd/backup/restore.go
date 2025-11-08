@@ -62,10 +62,14 @@ Examples:
 		}
 
 		// Recommend creating a current backup before restore
-		fmt.Printf("\n%s Consider creating a backup of the current state before proceeding:\n", 
+		fmt.Printf("\n%s Consider creating a backup of the current state before proceeding:\n",
 			color.New(color.FgYellow).Sprint("Recommendation:"))
-		fmt.Printf("  %s\n", color.New(color.FgCyan).Sprint("pb backup create --name \"pre-restore-$(date +%Y%m%d-%H%M)\""))
-		
+
+		// --- START: CORRECTED LINE ---
+		// Use Sprintf and escape the percent signs with '%%' to satisfy the linter.
+		fmt.Printf("  %s\n", color.New(color.FgCyan).Sprintf("pb backup create --name \"pre-restore-$(date +%%Y%%m%%d-%%H%%M)\""))
+		// --- END: CORRECTED LINE ---
+
 		if !forceFlag {
 			fmt.Print("\nProceed with restore? (y/N): ")
 			reader := bufio.NewReader(os.Stdin)
@@ -83,9 +87,9 @@ Examples:
 
 		// Restore from the backup
 		utils.PrintInfo(fmt.Sprintf("Restoring from backup '%s'...", backupName))
-		fmt.Printf("%s This may take several minutes and will restart PocketBase.\n", 
+		fmt.Printf("%s This may take several minutes and will restart PocketBase.\n",
 			color.New(color.FgYellow).Sprint("Note:"))
-		
+
 		err = client.RestoreBackup(backupName)
 		if err != nil {
 			if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
@@ -102,7 +106,7 @@ Examples:
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
 		yellow := color.New(color.FgYellow).SprintFunc()
-		
+
 		fmt.Printf("\n%s Backup restore initiated successfully!\n", green("✓"))
 		fmt.Printf("\nRestore Details:\n")
 		fmt.Printf("  Backup: %s\n", backup.Key)
@@ -118,11 +122,11 @@ Examples:
 
 		// Show next steps
 		fmt.Printf("\nNext steps:\n")
-		fmt.Printf("  Re-authenticate if needed: %s\n", 
+		fmt.Printf("  Re-authenticate if needed: %s\n",
 			cyan("pb auth"))
-		fmt.Printf("  Verify restoration: %s\n", 
+		fmt.Printf("  Verify restoration: %s\n",
 			cyan("pb collections <collection> list"))
-		fmt.Printf("  Create new backup: %s\n", 
+		fmt.Printf("  Create new backup: %s\n",
 			cyan("pb backup create"))
 
 		return nil

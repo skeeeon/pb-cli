@@ -9,16 +9,27 @@ import (
 	"pb-cli/internal/config"
 )
 
-// ValidateURL validates that a string is a valid URL
+// ValidateURL validates that a string is a valid and useful URL with a scheme and host.
 func ValidateURL(urlStr string) error {
 	if urlStr == "" {
 		return fmt.Errorf("URL cannot be empty")
 	}
 
-	_, err := url.Parse(urlStr)
+	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
 		return fmt.Errorf("invalid URL format: %w", err)
 	}
+
+	// --- START: CORRECTED LOGIC ---
+	// Add stricter checks because url.Parse is too lenient.
+	// A valid URL for our purposes must have a scheme and a host.
+	if parsedURL.Scheme == "" {
+		return fmt.Errorf("invalid URL: missing scheme (e.g., http:// or https://)")
+	}
+	if parsedURL.Host == "" {
+		return fmt.Errorf("invalid URL: missing host (e.g., example.com)")
+	}
+	// --- END: CORRECTED LOGIC ---
 
 	return nil
 }
@@ -50,6 +61,11 @@ func ValidateAuthCollection(collection string) error {
 
 // ValidateOutputFormat validates an output format
 func ValidateOutputFormat(format string) error {
+	// An empty format is not valid; the caller should substitute a default.
+	if format == "" {
+		return fmt.Errorf("invalid output format ''. Valid options: json, yaml, table")
+	}
+
 	validFormats := []string{
 		config.OutputFormatJSON,
 		config.OutputFormatYAML,
@@ -63,7 +79,7 @@ func ValidateOutputFormat(format string) error {
 		}
 	}
 
-	return fmt.Errorf("invalid output format '%s'. Valid options: %s", 
+	return fmt.Errorf("invalid output format '%s'. Valid options: %s",
 		format, strings.Join(validFormats, ", "))
 }
 
@@ -130,26 +146,27 @@ func ValidateRecordID(recordID string) error {
 	if recordID == "" {
 		return fmt.Errorf("record ID cannot be empty")
 	}
-	
+
 	// Basic validation - PocketBase will handle detailed ID validation
 	if len(recordID) < 1 || len(recordID) > 255 {
 		return fmt.Errorf("record ID must be between 1 and 255 characters")
 	}
-	
+
 	return nil
 }
 
 // ValidatePocketBaseURL validates a PocketBase server URL
 func ValidatePocketBaseURL(urlStr string) error {
 	if err := ValidateURL(urlStr); err != nil {
-		return fmt.Errorf("invalid PocketBase URL: %w", err)
+		// The error from ValidateURL will be descriptive enough.
+		return err
 	}
-	
+
 	// Check for supported schemes
 	if !strings.HasPrefix(urlStr, "http://") && !strings.HasPrefix(urlStr, "https://") {
 		return fmt.Errorf("PocketBase URL must use http:// or https:// scheme")
 	}
-	
+
 	return nil
 }
 
@@ -158,16 +175,16 @@ func ValidateJSONData(data map[string]interface{}) error {
 	if data == nil {
 		return fmt.Errorf("data cannot be nil")
 	}
-	
+
 	if len(data) == 0 {
 		return fmt.Errorf("data cannot be empty")
 	}
-	
+
 	// Check for reasonable data size (prevent extremely large payloads)
 	if len(data) > 1000 {
 		return fmt.Errorf("data contains too many fields (maximum 1000)")
 	}
-	
+
 	return nil
 }
 
@@ -176,12 +193,12 @@ func ValidateFilterExpression(filter string) error {
 	if filter == "" {
 		return nil // Empty filter is valid
 	}
-	
+
 	// Basic validation - check for reasonable length
 	if len(filter) > 1000 {
 		return fmt.Errorf("filter expression is too long (maximum 1000 characters)")
 	}
-	
+
 	// Check for basic SQL injection patterns (basic protection)
 	dangerousPatterns := []string{
 		"';",
@@ -191,14 +208,14 @@ func ValidateFilterExpression(filter string) error {
 		"xp_",
 		"sp_",
 	}
-	
+
 	filterLower := strings.ToLower(filter)
 	for _, pattern := range dangerousPatterns {
 		if strings.Contains(filterLower, pattern) {
 			return fmt.Errorf("filter expression contains potentially dangerous pattern: %s", pattern)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -207,18 +224,18 @@ func ValidateSortExpression(sort string) error {
 	if sort == "" {
 		return nil // Empty sort is valid
 	}
-	
+
 	// Basic validation - check for reasonable length
 	if len(sort) > 200 {
 		return fmt.Errorf("sort expression is too long (maximum 200 characters)")
 	}
-	
+
 	// Check for basic field name patterns
 	validSortPattern := regexp.MustCompile(`^[\w\-,\s]+$`)
 	if !validSortPattern.MatchString(sort) {
 		return fmt.Errorf("sort expression contains invalid characters (only letters, numbers, hyphens, commas, and spaces allowed)")
 	}
-	
+
 	return nil
 }
 
@@ -227,23 +244,23 @@ func ValidateFieldsList(fields []string) error {
 	if len(fields) == 0 {
 		return nil // Empty fields list is valid
 	}
-	
+
 	validFieldPattern := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_]*$`)
-	
+
 	for _, field := range fields {
 		if field == "" {
 			return fmt.Errorf("field name cannot be empty")
 		}
-		
+
 		if len(field) > 50 {
 			return fmt.Errorf("field name '%s' is too long (maximum 50 characters)", field)
 		}
-		
+
 		if !validFieldPattern.MatchString(field) {
 			return fmt.Errorf("field name '%s' has invalid format (must start with letter, contain only letters, numbers, and underscores)", field)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -258,18 +275,18 @@ func ValidatePaginationParams(offset, limit int) error {
 	if offset < 0 {
 		return fmt.Errorf("offset cannot be negative")
 	}
-	
+
 	if limit < 1 {
 		return fmt.Errorf("limit must be at least 1")
 	}
-	
+
 	if limit > 500 {
 		return fmt.Errorf("limit cannot exceed 500")
 	}
-	
+
 	if offset > 1000000 {
 		return fmt.Errorf("offset cannot exceed 1,000,000")
 	}
-	
+
 	return nil
 }
