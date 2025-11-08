@@ -3,8 +3,8 @@ package collections
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"pb-cli/internal/config"
@@ -21,14 +21,14 @@ var (
 	sortFlag   string
 	fieldsFlag []string
 	expandFlag []string
-	
+
 	// Create/Update flags
 	fileFlag string
-	
+
 	// Delete flags
 	forceFlag bool
 	quietFlag bool
-	
+
 	// Common flags
 	outputFlag string
 )
@@ -49,6 +49,17 @@ The available collections are managed through your context configuration. Use
 Usage Pattern:
   pb collections <collection> <action> [args] [flags]
 
+Data for 'create' and 'update' actions can be provided in one of three ways:
+1. As a JSON string argument:
+   pb collections posts create '{"title":"My Post"}'
+
+2. From a file using the --file flag:
+   pb collections posts create --file post.json
+
+3. Piped from stdin (standard input):
+   cat post.json | pb collections posts create
+   pb collections posts get <id> | jq '.title="New"' | pb collections posts update <id>
+
 Examples:
   # List all posts
   pb collections posts list
@@ -61,9 +72,6 @@ Examples:
 
   # Create a new post from JSON
   pb collections posts create '{"title":"My Post","content":"Hello world","published":true}'
-
-  # Create from file
-  pb collections posts create --file post.json
 
   # Update a post
   pb collections posts update post_123 '{"published":true}' --output table
@@ -122,14 +130,14 @@ func init() {
 	CollectionsCmd.Flags().StringVar(&sortFlag, "sort", "", "Sort expression (e.g., 'title', '-created', 'title,-updated')")
 	CollectionsCmd.Flags().StringSliceVar(&fieldsFlag, "fields", nil, "Specific fields to return (comma-separated)")
 	CollectionsCmd.Flags().StringSliceVar(&expandFlag, "expand", nil, "Relations to expand (comma-separated)")
-	
+
 	// Create/Update flags
 	CollectionsCmd.Flags().StringVar(&fileFlag, "file", "", "Path to JSON file containing record data")
-	
+
 	// Delete flags
 	CollectionsCmd.Flags().BoolVarP(&forceFlag, "force", "f", false, "Skip confirmation prompt")
 	CollectionsCmd.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppress success messages")
-	
+
 	// Common flags
 	CollectionsCmd.Flags().StringVarP(&outputFlag, "output", "o", "", "Output format (json|yaml|table)")
 }
@@ -235,32 +243,42 @@ func routeToAction(ctx *config.Context, collection, action string, args []string
 	}
 }
 
-// parseJSONInput parses JSON input from string or file
+// --- START: MODIFIED FUNCTION ---
+// parseJSONInput parses JSON input from a file, string argument, or stdin.
+// Precedence: file > argument > stdin
 func parseJSONInput(jsonStr, filePath string) (map[string]interface{}, error) {
-	if filePath != "" && jsonStr != "" {
-		return nil, fmt.Errorf("cannot specify both JSON string and file path")
-	}
-
-	if filePath == "" && jsonStr == "" {
-		return nil, fmt.Errorf("either JSON data or file path is required")
-	}
-
-	var jsonData string
+	var jsonData []byte
 	var err error
 
 	if filePath != "" {
-		// Read from file
-		jsonData, err = readJSONFile(filePath)
+		// 1. Read from file (highest precedence)
+		jsonData, err = os.ReadFile(filePath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read JSON file: %w", err)
+			return nil, fmt.Errorf("failed to read file '%s': %w", filePath, err)
 		}
+	} else if jsonStr != "" {
+		// 2. Use string argument
+		jsonData = []byte(jsonStr)
 	} else {
-		jsonData = jsonStr
+		// 3. Try to read from stdin (lowest precedence)
+		stat, _ := os.Stdin.Stat()
+		// Check if data is being piped or redirected
+		if (stat.Mode() & os.ModeCharDevice) == 0 {
+			jsonData, err = io.ReadAll(os.Stdin)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read from stdin: %w", err)
+			}
+		}
+	}
+
+	if len(jsonData) == 0 {
+		return nil, fmt.Errorf("JSON data is required either from an argument, the --file flag, or piped from stdin")
 	}
 
 	// Validate and parse JSON
-	return validateAndParseJSON(jsonData)
+	return validateAndParseJSON(string(jsonData))
 }
+// --- END: MODIFIED FUNCTION ---
 
 // validateAndParseJSON validates JSON format and parses to map
 func validateAndParseJSON(jsonStr string) (map[string]interface{}, error) {
@@ -276,21 +294,5 @@ func validateAndParseJSON(jsonStr string) (map[string]interface{}, error) {
 	return data, nil
 }
 
-// readJSONFile reads and returns JSON content from a file
-func readJSONFile(filePath string) (string, error) {
-	if filePath == "" {
-		return "", fmt.Errorf("file path cannot be empty")
-	}
-
-	// Basic path validation
-	if strings.Contains(filePath, "..") {
-		return "", fmt.Errorf("file path cannot contain '..' for security reasons")
-	}
-
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read file '%s': %w", filePath, err)
-	}
-
-	return string(data), nil
-}
+// readJSONFile is no longer needed as its logic is merged into parseJSONInput
+// func readJSONFile(filePath string) (string, error) { ... }
