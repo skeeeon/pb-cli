@@ -103,7 +103,7 @@ Examples:
 
 		// Perform authentication
 		utils.PrintInfo(fmt.Sprintf("Authenticating with collection '%s'...", pbCollection))
-		
+
 		authResp, err := client.Authenticate(pbCollection, pbEmail, pbPassword)
 		if err != nil {
 			if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
@@ -132,36 +132,42 @@ Examples:
 		// Display success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
+
 		fmt.Printf("\n%s Authentication successful!\n", green("✓"))
-		
-		// Show authentication details
+
+		// --- START: MODIFIED AUTHENTICATION DETAILS BLOCK ---
 		fmt.Printf("\nAuthentication Details:\n")
 		fmt.Printf("  Collection: %s\n", pocketbase.GetCollectionDisplayName(pbCollection))
-		fmt.Printf("  Identity: %s\n", pbEmail)
-		fmt.Printf("  Context: %s\n", cyan(ctx.Name))
-		
+		fmt.Printf("  Identity:   %s\n", pbEmail)
+		if ctx.PocketBase.AuthExpires != nil {
+			expiresAtFormatted := ctx.PocketBase.AuthExpires.Format("2006-01-02 15:04:05 MST")
+			fmt.Printf("  Expires:    %s\n", expiresAtFormatted)
+		}
+		fmt.Printf("  Context:    %s\n", cyan(ctx.Name))
+
 		if authResp.Record != nil {
 			if name := getRecordDisplayName(authResp.Record, pbCollection); name != "" {
-				fmt.Printf("  Name: %s\n", name)
+				fmt.Printf("  Name:       %s\n", name)
 			}
 		}
+		// --- END: MODIFIED AUTHENTICATION DETAILS BLOCK ---
+
 
 		// Show available next steps
 		fmt.Printf("\nNext steps:\n")
-		
+
 		// Show collections management if no collections configured
 		if len(ctx.PocketBase.AvailableCollections) == 0 {
-			fmt.Printf("  Configure collections: %s\n", 
+			fmt.Printf("  Configure collections: %s\n",
 				cyan("pb context collections add <collection_names>"))
 		} else {
-			fmt.Printf("  List available collections: %s\n", 
+			fmt.Printf("  List available collections: %s\n",
 				cyan("pb context collections list"))
-			
+
 			// Show example collection operation
 			if len(ctx.PocketBase.AvailableCollections) > 0 {
 				firstCollection := ctx.PocketBase.AvailableCollections[0]
-				fmt.Printf("  Example operation: %s\n", 
+				fmt.Printf("  Example operation: %s\n",
 					cyan(fmt.Sprintf("pb collections %s list", firstCollection)))
 			}
 		}
@@ -190,13 +196,13 @@ func promptForEmail() (string, error) {
 // promptForPassword prompts the user for their password (hidden input)
 func promptForPassword() (string, error) {
 	fmt.Print("Password: ")
-	
+
 	// Hide password input
 	passwordBytes, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", err
 	}
-	
+
 	fmt.Println() // New line after hidden input
 	return string(passwordBytes), nil
 }
@@ -210,7 +216,7 @@ func getRecordDisplayName(record map[string]interface{}, collection string) stri
 			return name
 		}
 	}
-	
+
 	// Try combining first/last name
 	if firstName, ok := record["first_name"].(string); ok {
 		if lastName, ok := record["last_name"].(string); ok {
@@ -223,12 +229,12 @@ func getRecordDisplayName(record map[string]interface{}, collection string) stri
 			}
 		}
 	}
-	
+
 	// Try username
 	if username, ok := record["username"].(string); ok && username != "" {
 		return username
 	}
-	
+
 	// Fallback to email or ID
 	if email, ok := record["email"].(string); ok && email != "" {
 		return email
@@ -236,6 +242,6 @@ func getRecordDisplayName(record map[string]interface{}, collection string) stri
 	if id, ok := record["id"].(string); ok {
 		return id
 	}
-	
+
 	return ""
 }

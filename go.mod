@@ -6,6 +6,7 @@ require (
 	github.com/adrg/xdg v0.4.0
 	github.com/fatih/color v1.16.0
 	github.com/go-resty/resty/v2 v2.11.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2

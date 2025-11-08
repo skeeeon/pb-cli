@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"pb-cli/internal/config"
 	"pb-cli/internal/utils"
 )
@@ -45,9 +46,9 @@ func (c *Client) Authenticate(collection, identity, password string) (*AuthRespo
 
 	// Make authentication request
 	endpoint := fmt.Sprintf("collections/%s/auth-with-password", collection)
-	
+
 	utils.PrintDebug(fmt.Sprintf("Authenticating with collection: %s", collection))
-	
+
 	resp, err := c.makeRequest("POST", endpoint, authData)
 	if err != nil {
 		return nil, fmt.Errorf("authentication failed: %w", err)
@@ -64,7 +65,7 @@ func (c *Client) Authenticate(collection, identity, password string) (*AuthRespo
 	c.authRecord = authResp.Record
 
 	utils.PrintDebug("Authentication successful")
-	
+
 	return &authResp, nil
 }
 
@@ -75,9 +76,9 @@ func (c *Client) RefreshAuth(collection string) (*AuthResponse, error) {
 	}
 
 	endpoint := fmt.Sprintf("collections/%s/auth-refresh", collection)
-	
+
 	utils.PrintDebug("Refreshing authentication token")
-	
+
 	resp, err := c.makeRequest("POST", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to refresh authentication: %w", err)
@@ -93,7 +94,7 @@ func (c *Client) RefreshAuth(collection string) (*AuthResponse, error) {
 	c.authRecord = authResp.Record
 
 	utils.PrintDebug("Authentication refreshed successfully")
-	
+
 	return &authResp, nil
 }
 
@@ -104,7 +105,7 @@ func (c *Client) ValidateAuth(collection string) error {
 	}
 
 	endpoint := fmt.Sprintf("collections/%s/auth-refresh", collection)
-	
+
 	// Try to refresh - if it fails, auth is invalid
 	_, err := c.makeRequest("POST", endpoint, nil)
 	if err != nil {
@@ -136,10 +137,36 @@ func UpdateAuthContextFromResponse(ctx *config.Context, authResp *AuthResponse) 
 	// Update context with auth data
 	ctx.PocketBase.AuthToken = authResp.Token
 	ctx.PocketBase.AuthRecord = authResp.Record
-	
-	// Set expiration (PocketBase tokens typically last 7 days)
-	expiresAt := time.Now().Add(7 * 24 * time.Hour)
-	ctx.PocketBase.AuthExpires = &expiresAt
+
+	// Define a simple claims struct to extract the 'exp' field
+	type Claims struct {
+		jwt.RegisteredClaims
+	}
+
+	// Parse the token without verifying the signature. This is safe because
+	// we just received it from the PocketBase server over a secure connection.
+	// We only need to read the claims.
+	token, _, err := new(jwt.Parser).ParseUnverified(authResp.Token, &Claims{})
+	if err != nil {
+		// If parsing fails, fall back to the old 7-day logic as a safety measure
+		// but warn the user.
+		utils.PrintWarning("Could not parse JWT to determine expiration, defaulting to 7 days.")
+		expiresAt := time.Now().Add(7 * 24 * time.Hour)
+		ctx.PocketBase.AuthExpires = &expiresAt
+		return nil
+	}
+
+	if claims, ok := token.Claims.(*Claims); ok && claims.ExpiresAt != nil {
+		// The 'exp' claim is a Unix timestamp. Convert it to time.Time.
+		expiresAt := claims.ExpiresAt.Time
+		ctx.PocketBase.AuthExpires = &expiresAt
+		utils.PrintDebug(fmt.Sprintf("JWT expiration successfully parsed: %s", expiresAt.Format(time.RFC3339)))
+	} else {
+		// If token has no expiration claim, fall back
+		utils.PrintWarning("JWT has no expiration claim, defaulting to 7 days.")
+		expiresAt := time.Now().Add(7 * 24 * time.Hour)
+		ctx.PocketBase.AuthExpires = &expiresAt
+	}
 
 	return nil
 }
@@ -155,8 +182,11 @@ func IsAuthValid(ctx *config.Context) bool {
 		return true
 	}
 
-	// Check if token has expired (with 5-minute buffer)
-	return time.Now().Before(ctx.PocketBase.AuthExpires.Add(-5 * time.Minute))
+	// --- START: CORRECTED LOGIC ---
+	// Check if the current time is before the token's expiration time.
+	// The buffer has been removed as it caused issues with short-lived tokens.
+	return time.Now().Before(*ctx.PocketBase.AuthExpires)
+	// --- END: CORRECTED LOGIC ---
 }
 
 // GetCollectionDisplayName returns a human-readable name for auth collections

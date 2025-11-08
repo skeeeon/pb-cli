@@ -7,8 +7,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"pb-cli/internal/config"
 	"gopkg.in/yaml.v3"
+	"pb-cli/internal/config"
+	"pb-cli/internal/pocketbase"
 )
 
 var showOutputFormat string
@@ -54,7 +55,7 @@ Examples:
 				// Try to provide helpful suggestions
 				contexts, listErr := configManager.ListContexts()
 				if listErr == nil && len(contexts) > 0 {
-					return fmt.Errorf("context '%s' not found. Available contexts: %v", 
+					return fmt.Errorf("context '%s' not found. Available contexts: %v",
 						contextName, contexts)
 				}
 				return fmt.Errorf("context '%s' not found", contextName)
@@ -96,7 +97,7 @@ Examples:
 			showContextTable(ctx, isActive, configManager)
 
 		default:
-			return fmt.Errorf("invalid output format '%s'. Valid formats: json, yaml, table", 
+			return fmt.Errorf("invalid output format '%s'. Valid formats: json, yaml, table",
 				showOutputFormat)
 		}
 
@@ -107,6 +108,7 @@ Examples:
 func showContextTable(ctx *config.Context, isActive bool, configManager *config.Manager) {
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 
@@ -127,18 +129,28 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 	fmt.Printf("  URL:                %s\n", ctx.PocketBase.URL)
 	fmt.Printf("  Auth Collection:    %s\n", ctx.PocketBase.AuthCollection)
 
+	// --- START: CORRECTED AUTHENTICATION STATUS LOGIC ---
 	// Authentication status
 	if ctx.PocketBase.AuthToken != "" {
-		if ctx.PocketBase.AuthExpires != nil {
-			fmt.Printf("  Authentication:     %s (expires %s)\n", 
-				green("Valid"), 
-				ctx.PocketBase.AuthExpires.Format("2006-01-02 15:04:05"))
+		// Use the actual validation logic here
+		if pocketbase.IsAuthValid(ctx) {
+			expirationInfo := ""
+			if ctx.PocketBase.AuthExpires != nil {
+				expirationInfo = fmt.Sprintf(" (expires %s)", ctx.PocketBase.AuthExpires.Format("2006-01-02 15:04:05"))
+			}
+			fmt.Printf("  Authentication:     %s%s\n", green("Valid"), expirationInfo)
 		} else {
-			fmt.Printf("  Authentication:     %s\n", green("Valid"))
+			expirationInfo := ""
+			if ctx.PocketBase.AuthExpires != nil {
+				// Use a more descriptive "expired on" for clarity
+				expirationInfo = fmt.Sprintf(" (expired on %s)", ctx.PocketBase.AuthExpires.Format("2006-01-02 15:04:05"))
+			}
+			fmt.Printf("  Authentication:     %s%s\n", red("Expired"), expirationInfo)
 		}
 	} else {
 		fmt.Printf("  Authentication:     %s\n", yellow("Not Authenticated"))
 	}
+	// --- END: CORRECTED AUTHENTICATION STATUS LOGIC ---
 
 	// Available collections
 	fmt.Printf("  Available Collections: %d\n", len(ctx.PocketBase.AvailableCollections))
@@ -153,9 +165,9 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 	// Show helpful commands
 	if !isActive {
 		fmt.Printf("%s\n", bold("Commands:"))
-		fmt.Printf("  Select this context: %s\n", 
+		fmt.Printf("  Select this context: %s\n",
 			cyan(fmt.Sprintf("pb context select %s", ctx.Name)))
-	} else if ctx.PocketBase.AuthToken == "" {
+	} else if ctx.PocketBase.AuthToken == "" || !pocketbase.IsAuthValid(ctx) { // Prompt for auth if not authenticated OR expired
 		fmt.Printf("%s\n", bold("Next Steps:"))
 		fmt.Printf("  Authenticate: %s\n", cyan("pb auth"))
 		if len(ctx.PocketBase.AvailableCollections) == 0 {
@@ -180,6 +192,6 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 }
 
 func init() {
-	showCmd.Flags().StringVarP(&showOutputFormat, "output", "o", "table", 
+	showCmd.Flags().StringVarP(&showOutputFormat, "output", "o", "table",
 		"Output format (table|json|yaml)")
 }
