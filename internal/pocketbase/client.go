@@ -248,8 +248,8 @@ func (c *Client) ListRecords(collection string, options *ListOptions) (*RecordsL
 	return &result, nil
 }
 
-// GetRecord retrieves a single record by ID
-func (c *Client) GetRecord(collection, id string, expand []string) (map[string]interface{}, error) {
+// GetRecord retrieves a single record by ID with optional expand and fields filtering
+func (c *Client) GetRecord(collection, id string, expand []string, fields []string) (map[string]interface{}, error) {
 	if !c.IsAuthenticated() {
 		return nil, fmt.Errorf("authentication required")
 	}
@@ -259,6 +259,9 @@ func (c *Client) GetRecord(collection, id string, expand []string) (map[string]i
 	req := c.httpClient.R()
 	if len(expand) > 0 {
 		req.SetQueryParam("expand", strings.Join(expand, ","))
+	}
+	if len(fields) > 0 {
+		req.SetQueryParam("fields", strings.Join(fields, ","))
 	}
 	
 	url := fmt.Sprintf("%s/api/%s", c.baseURL, endpoint)

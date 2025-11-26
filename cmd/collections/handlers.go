@@ -89,10 +89,11 @@ func handleGetAction(ctx *config.Context, collection string, args []string) erro
 	// Create PocketBase client
 	client := createPocketBaseClient(ctx)
 
-	utils.PrintDebug(fmt.Sprintf("Getting record '%s' from collection '%s' with expand=%v", recordID, collection, expandFlag))
+	utils.PrintDebug(fmt.Sprintf("Getting record '%s' from collection '%s' with expand=%v, fields=%v", 
+		recordID, collection, expandFlag, fieldsFlag))
 
-	// Get record from PocketBase
-	record, err := client.GetRecord(collection, recordID, expandFlag)
+	// Get record from PocketBase - now passing fieldsFlag
+	record, err := client.GetRecord(collection, recordID, expandFlag, fieldsFlag)
 	if err != nil {
 		if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 			utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
@@ -312,7 +313,8 @@ func handleDeleteAction(ctx *config.Context, collection string, args []string) e
 		utils.PrintDebug(fmt.Sprintf("Fetching record details for confirmation: %s", recordID))
 		
 		var err error
-		record, err = client.GetRecord(collection, recordID, nil)
+		// Pass nil for both expand and fields since we just need basic info
+		record, err = client.GetRecord(collection, recordID, nil, nil)
 		if err != nil {
 			if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 				utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
