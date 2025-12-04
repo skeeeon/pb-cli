@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"pb-cli/internal/config"
 	"pb-cli/internal/pocketbase"
-	"pb-cli/internal/resolver"
 )
 
 // Global flag variables
@@ -32,6 +32,9 @@ var (
 	// Common flags
 	outputFlag string
 )
+
+// Valid collection actions
+var validActions = []string{"list", "get", "create", "update", "delete"}
 
 // CollectionsCmd represents the collections command
 var CollectionsCmd = &cobra.Command{
@@ -105,21 +108,17 @@ your active context before use.`,
 			return err
 		}
 
-		// Resolve partial action matching
-		resolvedAction, err := resolveAction(action)
-		if err != nil {
+		// Validate action
+		if err := validateAction(action); err != nil {
 			return err
 		}
 
 		// Route to appropriate action handler
-		return routeToAction(ctx, collection, resolvedAction, actionArgs)
+		return routeToAction(ctx, collection, action, actionArgs)
 	},
 }
 
-var (
-	configManager *config.Manager
-	cmdResolver   *resolver.CommandResolver
-)
+var configManager *config.Manager
 
 func init() {
 	// Register all possible flags for collections commands
@@ -147,23 +146,10 @@ func SetConfigManager(cm *config.Manager) {
 	configManager = cm
 }
 
-// SetCommandResolver sets the command resolver for partial matching
-func SetCommandResolver(cr *resolver.CommandResolver) {
-	cmdResolver = cr
-}
-
 // validateConfigManager ensures the config manager is available
 func validateConfigManager() error {
 	if configManager == nil {
 		return fmt.Errorf("configuration manager not initialized")
-	}
-	return nil
-}
-
-// validateCommandResolver ensures the command resolver is available
-func validateCommandResolver() error {
-	if cmdResolver == nil {
-		return fmt.Errorf("command resolver not initialized")
 	}
 	return nil
 }
@@ -176,7 +162,7 @@ func validateActiveContext() (*config.Context, error) {
 
 	ctx, err := configManager.GetActiveContext()
 	if err != nil {
-		return nil, fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+		return nil, fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 	}
 
 	// Check authentication
@@ -199,25 +185,25 @@ func validateCollection(collection string) (*config.Context, error) {
 		return nil, err
 	}
 
-	if err := validateCommandResolver(); err != nil {
-		return nil, err
-	}
-
-	// Validate collection against context's available collections
-	if err := cmdResolver.ValidateCollection(collection, ctx.PocketBase.AvailableCollections); err != nil {
+	// Use validation helper to check collection availability
+	if err := validateCollectionInContext(collection, ctx); err != nil {
 		return nil, err
 	}
 
 	return ctx, nil
 }
 
-// resolveAction resolves a partial action command to its full form
-func resolveAction(partialAction string) (string, error) {
-	if err := validateCommandResolver(); err != nil {
-		return "", err
+// validateAction validates that the action is supported
+func validateAction(action string) error {
+	action = strings.ToLower(action)
+	for _, valid := range validActions {
+		if action == valid {
+			return nil
+		}
 	}
 
-	return cmdResolver.ResolveCommand("collections", partialAction)
+	return fmt.Errorf("unknown action '%s'. Available actions: %s",
+		action, strings.Join(validActions, ", "))
 }
 
 // createPocketBaseClient creates an authenticated PocketBase client from context
@@ -227,7 +213,7 @@ func createPocketBaseClient(ctx *config.Context) *pocketbase.Client {
 
 // routeToAction routes the command to the appropriate action handler
 func routeToAction(ctx *config.Context, collection, action string, args []string) error {
-	switch action {
+	switch strings.ToLower(action) {
 	case "list":
 		return handleListAction(ctx, collection, args)
 	case "get":
@@ -239,11 +225,11 @@ func routeToAction(ctx *config.Context, collection, action string, args []string
 	case "delete":
 		return handleDeleteAction(ctx, collection, args)
 	default:
-		return fmt.Errorf("unknown action '%s'. Available actions: list, get, create, update, delete", action)
+		return fmt.Errorf("unknown action '%s'. Available actions: %s",
+			action, strings.Join(validActions, ", "))
 	}
 }
 
-// --- START: MODIFIED FUNCTION ---
 // parseJSONInput parses JSON input from a file, string argument, or stdin.
 // Precedence: file > argument > stdin
 func parseJSONInput(jsonStr, filePath string) (map[string]interface{}, error) {
@@ -278,7 +264,6 @@ func parseJSONInput(jsonStr, filePath string) (map[string]interface{}, error) {
 	// Validate and parse JSON
 	return validateAndParseJSON(string(jsonData))
 }
-// --- END: MODIFIED FUNCTION ---
 
 // validateAndParseJSON validates JSON format and parses to map
 func validateAndParseJSON(jsonStr string) (map[string]interface{}, error) {
@@ -293,6 +278,3 @@ func validateAndParseJSON(jsonStr string) (map[string]interface{}, error) {
 
 	return data, nil
 }
-
-// readJSONFile is no longer needed as its logic is merged into parseJSONInput
-// func readJSONFile(filePath string) (string, error) { ... }

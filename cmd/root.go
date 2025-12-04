@@ -11,12 +11,10 @@ import (
 	"pb-cli/cmd/collections"
 	"pb-cli/cmd/context"
 	"pb-cli/internal/config"
-	"pb-cli/internal/resolver"
 )
 
 var (
 	configManager *config.Manager
-	cmdResolver   *resolver.CommandResolver
 	
 	// Global flags
 	globalOutputFormat string
@@ -85,15 +83,11 @@ Features:
 		// Apply pagination size (no command line flag for this)
 		config.Global.PaginationSize = globalConfig.PaginationSize
 
-		// Initialize command resolver for partial matching
-		cmdResolver = resolver.NewCommandResolver()
-
-		// Pass config manager and resolver to command groups
+		// Pass config manager to command groups
 		context.SetConfigManager(configManager)
 		auth.SetConfigManager(configManager)
 		backup.SetConfigManager(configManager)
 		collections.SetConfigManager(configManager)
-		collections.SetCommandResolver(cmdResolver)
 
 		return nil
 	},
@@ -161,9 +155,4 @@ func initConfig() {
 // GetConfigManager returns the global configuration manager instance
 func GetConfigManager() *config.Manager {
 	return configManager
-}
-
-// GetCommandResolver returns the global command resolver instance
-func GetCommandResolver() *resolver.CommandResolver {
-	return cmdResolver
 }
