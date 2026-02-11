@@ -47,7 +47,7 @@ func handleListAction(ctx *config.Context, collection string, args []string) err
 		if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 			utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
 			if suggestion := pbErr.GetSuggestion(); suggestion != "" {
-				fmt.Printf("\nSuggestion: %s\n", suggestion)
+				fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
 			}
 			return fmt.Errorf("failed to list records")
 		}
@@ -98,7 +98,7 @@ func handleGetAction(ctx *config.Context, collection string, args []string) erro
 		if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 			utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
 			if suggestion := pbErr.GetSuggestion(); suggestion != "" {
-				fmt.Printf("\nSuggestion: %s\n", suggestion)
+				fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
 			}
 			return fmt.Errorf("failed to get record")
 		}
@@ -153,33 +153,33 @@ func handleCreateAction(ctx *config.Context, collection string, args []string) e
 		if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 			utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
 			if suggestion := pbErr.GetSuggestion(); suggestion != "" {
-				fmt.Printf("\nSuggestion: %s\n", suggestion)
+				fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
 			}
 			// Provide additional suggestions based on the error
 			if additionalSuggestion := provideSuggestions(collection, "create", err); additionalSuggestion != "" {
-				fmt.Printf("Additional tip: %s\n", additionalSuggestion)
+				fmt.Fprintf(os.Stderr, "Additional tip: %s\n", additionalSuggestion)
 			}
 			return fmt.Errorf("failed to create record")
 		}
 		return fmt.Errorf("failed to create record: %w", err)
 	}
 
-	// Display success message
+	// Display success message to stderr so stdout stays clean for piping
 	recordID := ""
 	if id, ok := record["id"].(string); ok {
 		recordID = id
 	}
 
 	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Printf("%s Record created successfully!\n", green("✓"))
-	
+	fmt.Fprintf(os.Stderr, "%s Record created successfully!\n", green("✓"))
+
 	if recordID != "" {
-		fmt.Printf("  Record ID: %s\n", recordID)
-		fmt.Printf("  Collection: %s\n", collection)
-		
+		fmt.Fprintf(os.Stderr, "  Record ID: %s\n", recordID)
+		fmt.Fprintf(os.Stderr, "  Collection: %s\n", collection)
+
 		// Show record name if available
 		if name := getRecordDisplayName(record); name != "" {
-			fmt.Printf("  Display: %s\n", name)
+			fmt.Fprintf(os.Stderr, "  Display: %s\n", name)
 		}
 	}
 
@@ -189,7 +189,7 @@ func handleCreateAction(ctx *config.Context, collection string, args []string) e
 		outputFormat = config.Global.OutputFormat
 	}
 
-	fmt.Printf("\nCreated Record:\n")
+	fmt.Fprintf(os.Stderr, "\nCreated Record:\n")
 	switch outputFormat {
 	case config.OutputFormatJSON:
 		return utils.OutputData(record, config.OutputFormatJSON)
@@ -242,33 +242,33 @@ func handleUpdateAction(ctx *config.Context, collection string, args []string) e
 		if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 			utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
 			if suggestion := pbErr.GetSuggestion(); suggestion != "" {
-				fmt.Printf("\nSuggestion: %s\n", suggestion)
+				fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
 			}
 			// Provide additional suggestions based on the error
 			if additionalSuggestion := provideSuggestions(collection, "update", err); additionalSuggestion != "" {
-				fmt.Printf("Additional tip: %s\n", additionalSuggestion)
+				fmt.Fprintf(os.Stderr, "Additional tip: %s\n", additionalSuggestion)
 			}
 			return fmt.Errorf("failed to update record")
 		}
 		return fmt.Errorf("failed to update record: %w", err)
 	}
 
-	// Display success message
+	// Display success message to stderr so stdout stays clean for piping
 	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Printf("%s Record updated successfully!\n", green("✓"))
-	
-	fmt.Printf("  Record ID: %s\n", recordID)
-	fmt.Printf("  Collection: %s\n", collection)
-	
+	fmt.Fprintf(os.Stderr, "%s Record updated successfully!\n", green("✓"))
+
+	fmt.Fprintf(os.Stderr, "  Record ID: %s\n", recordID)
+	fmt.Fprintf(os.Stderr, "  Collection: %s\n", collection)
+
 	// Show record name if available
 	if name := getRecordDisplayName(record); name != "" {
-		fmt.Printf("  Display: %s\n", name)
+		fmt.Fprintf(os.Stderr, "  Display: %s\n", name)
 	}
 
 	// Show which fields were updated
 	fieldCount := len(data)
 	if fieldCount > 0 {
-		fmt.Printf("  Updated %d field(s)\n", fieldCount)
+		fmt.Fprintf(os.Stderr, "  Updated %d field(s)\n", fieldCount)
 	}
 
 	// Display result based on output format
@@ -277,7 +277,7 @@ func handleUpdateAction(ctx *config.Context, collection string, args []string) e
 		outputFormat = config.Global.OutputFormat
 	}
 
-	fmt.Printf("\nUpdated Record:\n")
+	fmt.Fprintf(os.Stderr, "\nUpdated Record:\n")
 	switch outputFormat {
 	case config.OutputFormatJSON:
 		return utils.OutputData(record, config.OutputFormatJSON)
@@ -319,7 +319,7 @@ func handleDeleteAction(ctx *config.Context, collection string, args []string) e
 			if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 				utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
 				if suggestion := pbErr.GetSuggestion(); suggestion != "" {
-					fmt.Printf("\nSuggestion: %s\n", suggestion)
+					fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
 				}
 				return fmt.Errorf("failed to retrieve record for confirmation")
 			}
@@ -340,24 +340,24 @@ func handleDeleteAction(ctx *config.Context, collection string, args []string) e
 		if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
 			utils.PrintError(fmt.Errorf("%s", pbErr.GetFriendlyMessage()))
 			if suggestion := pbErr.GetSuggestion(); suggestion != "" {
-				fmt.Printf("\nSuggestion: %s\n", suggestion)
+				fmt.Fprintf(os.Stderr, "\nSuggestion: %s\n", suggestion)
 			}
 			return fmt.Errorf("failed to delete record")
 		}
 		return fmt.Errorf("failed to delete record: %w", err)
 	}
 
-	// Display success message (unless quiet mode)
+	// Display success message to stderr (unless quiet mode)
 	if !quietFlag {
 		green := color.New(color.FgGreen).SprintFunc()
-		fmt.Printf("%s Record deleted successfully!\n", green("✓"))
-		fmt.Printf("  Record ID: %s\n", recordID)
-		fmt.Printf("  Collection: %s\n", collection)
-		
+		fmt.Fprintf(os.Stderr, "%s Record deleted successfully!\n", green("✓"))
+		fmt.Fprintf(os.Stderr, "  Record ID: %s\n", recordID)
+		fmt.Fprintf(os.Stderr, "  Collection: %s\n", collection)
+
 		// Show record name if we have it
 		if record != nil {
 			if name := getRecordDisplayName(record); name != "" {
-				fmt.Printf("  Display: %s\n", name)
+				fmt.Fprintf(os.Stderr, "  Display: %s\n", name)
 			}
 		}
 	}
@@ -395,16 +395,16 @@ func confirmDeletion(collection, recordID string, record map[string]interface{})
 	yellow := color.New(color.FgYellow).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 
-	fmt.Printf("%s Record to be deleted:\n", red("⚠"))
-	fmt.Printf("  Collection: %s\n", bold(collection))
-	fmt.Printf("  Record ID: %s\n", recordID)
+	fmt.Fprintf(os.Stderr, "%s Record to be deleted:\n", red("⚠"))
+	fmt.Fprintf(os.Stderr, "  Collection: %s\n", bold(collection))
+	fmt.Fprintf(os.Stderr, "  Record ID: %s\n", recordID)
 
 	// Show key record details
 	if record != nil {
 		if name := getRecordDisplayName(record); name != "" {
-			fmt.Printf("  Display: %s\n", name)
+			fmt.Fprintf(os.Stderr, "  Display: %s\n", name)
 		}
-		
+
 		// Show a few key fields if available
 		keyFields := []string{"email", "title", "description", "content"}
 		for _, field := range keyFields {
@@ -413,14 +413,14 @@ func confirmDeletion(collection, recordID string, record map[string]interface{})
 				if len(displayValue) > 50 {
 					displayValue = displayValue[:47] + "..."
 				}
-				fmt.Printf("  %s: %s\n", utils.TitleCase(field), displayValue)
+				fmt.Fprintf(os.Stderr, "  %s: %s\n", utils.TitleCase(field), displayValue)
 				break // Only show one descriptive field
 			}
 		}
 	}
 
-	fmt.Printf("\n%s This action cannot be undone.\n", yellow("Warning:"))
-	fmt.Print("Are you sure you want to delete this record? (y/N): ")
+	fmt.Fprintf(os.Stderr, "\n%s This action cannot be undone.\n", yellow("Warning:"))
+	fmt.Fprint(os.Stderr, "Are you sure you want to delete this record? (y/N): ")
 
 	reader := bufio.NewReader(os.Stdin)
 	response, err := reader.ReadString('\n')
@@ -430,7 +430,7 @@ func confirmDeletion(collection, recordID string, record map[string]interface{})
 
 	response = strings.TrimSpace(strings.ToLower(response))
 	if response != "y" && response != "yes" {
-		fmt.Println("Deletion cancelled.")
+		fmt.Fprintln(os.Stderr, "Deletion cancelled.")
 		return fmt.Errorf("deletion cancelled by user")
 	}
 
