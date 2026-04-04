@@ -13,9 +13,12 @@ import (
 	"pb-cli/internal/config"
 )
 
+// version is set by goreleaser via ldflags
+var version = "dev"
+
 var (
 	configManager *config.Manager
-	
+
 	// Global flags
 	globalOutputFormat string
 	globalColorsEnabled bool
@@ -35,7 +38,7 @@ Features:
 - PocketBase authentication with multiple collection support
 - Generic CRUD operations on any collection
 - Backup management (requires admin authentication)`,
-	Version: "0.1.0",
+	Version: version,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show usage instead of full help when no subcommand provided
 		return fmt.Errorf("missing subcommand. See 'pb --help' for available commands")
