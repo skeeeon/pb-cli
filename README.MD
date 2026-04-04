@@ -51,8 +51,8 @@ pb context select myapp
 # Authenticate with the default 'users' collection
 pb auth
 
-# Authenticate as admin (required for backup operations)
-pb auth --collection admins
+# Authenticate as superuser (required for backup operations)
+pb auth --collection _superusers
 
 # Authenticate with custom credentials
 pb auth --email admin@example.com --password mypassword
@@ -62,19 +62,23 @@ pb auth --email admin@example.com --password mypassword
 
 ```bash
 # List all posts
-pb collections posts list
+pb collections list posts
 
 # Get a specific post with expanded relations
-pb collections posts get post_123 --expand author,comments
+pb collections get posts post_123 --expand author,comments
 
 # Create a new post
-pb collections posts create '{"title":"My Post","content":"Hello world","published":true}'
+pb collections create posts '{"title":"My Post","content":"Hello world","published":true}'
 
 # Update a post
-pb collections posts update post_123 '{"published":true}'
+pb collections update posts post_123 '{"published":true}'
 
 # Delete a post (with confirmation)
-pb collections posts delete post_123
+pb collections delete posts post_123
+
+# Short alias — "c" for "collections"
+pb c list posts
+pb c get posts post_123
 ```
 
 ### 5. Manage Backups ⚠️ **Superuser Required**
@@ -124,7 +128,7 @@ pb context delete <n>
 
 # Manage collections in context
 pb context collections add <collections...>
-pb context collections remove <collection>
+pb context collections remove <collections...>
 pb context collections list
 pb context collections clear
 ```
@@ -147,10 +151,12 @@ pb auth --collection customers
 
 ### Collections CRUD
 
+All collections commands use the pattern `pb collections <action> <collection>`. The `collections` command can be shortened to `c`.
+
 ```bash
 # List records
-pb collections <collection> list [options]
-  --offset int         Record offset for pagination
+pb collections list <collection> [options]
+  --page int           Page number (default: 1)
   --limit int          Records per page (default: 30)
   --filter string      PocketBase filter expression
   --sort string        Sort expression (e.g., 'title', '-created')
@@ -159,20 +165,23 @@ pb collections <collection> list [options]
   --output string      Output format (json|yaml|table)
 
 # Get single record
-pb collections <collection> get <record_id> [options]
+pb collections get <collection> <record_id> [options]
   --expand strings     Relations to expand
+  --fields strings     Specific fields to return
   --output string      Output format
 
 # Create record
-pb collections <collection> create <json_data> [options]
-pb collections <collection> create --file data.json
+pb collections create <collection> <json_data> [options]
+pb collections create <collection> --file data.json
+  --file string        Path to JSON file containing record data
 
 # Update record
-pb collections <collection> update <record_id> <json_data> [options]
-pb collections <collection> update <record_id> --file data.json
+pb collections update <collection> <record_id> <json_data> [options]
+pb collections update <collection> <record_id> --file data.json
+  --file string        Path to JSON file containing record data
 
 # Delete record
-pb collections <collection> delete <record_id> [options]
+pb collections delete <collection> <record_id> [options]
   --force             Skip confirmation
   --quiet             Suppress output
 ```
@@ -259,65 +268,65 @@ pocketbase:
 
 ```bash
 # Filter published posts
-pb collections posts list --filter 'published=true'
+pb collections list posts --filter 'published=true'
 
 # Complex filtering
-pb collections posts list --filter 'published=true && author.name~"John"'
+pb collections list posts --filter 'published=true && author.name~"John"'
 
 # Sort by creation date (newest first)
-pb collections posts list --sort '-created'
+pb collections list posts --sort '-created'
 
 # Multiple sort fields
-pb collections posts list --sort 'category,title'
+pb collections list posts --sort 'category,title'
 ```
 
 ### Pagination
 
 ```bash
 # Get first 10 records
-pb collections posts list --limit 10
+pb collections list posts --limit 10
 
-# Get next 10 records
-pb collections posts list --limit 10 --offset 2
+# Get page 2
+pb collections list posts --limit 10 --page 2
 
 # Large datasets
-pb collections posts list --limit 100 --offset 4
+pb collections list posts --limit 100 --page 4
 ```
 
 ### Working with Relations
 
 ```bash
 # Expand single relation
-pb collections posts get post_123 --expand author
+pb collections get posts post_123 --expand author
 
 # Expand multiple relations
-pb collections posts get post_123 --expand author,comments,category
+pb collections get posts post_123 --expand author,comments,category
 
 # List with expanded relations
-pb collections posts list --expand author --filter 'published=true'
+pb collections list posts --expand author --filter 'published=true'
 ```
 
 ### Output Formats
 
 ```bash
 # JSON output (default)
-pb collections posts list --output json
+pb collections list posts --output json
 
 # YAML output
-pb collections posts list --output yaml
+pb collections list posts --output yaml
 
 # Table output
-pb collections posts list --output table
+pb collections list posts --output table
 
 # Set global default
-pb --output table collections posts list
+pb --output table collections list posts
 ```
 
 ### Creating Records with Files
 
 ```bash
 # Create from file
-pb collections posts create --file new-post.json
+pb collections create posts --file new-post.json
 
 # Example new-post.json
 {
@@ -329,13 +338,23 @@ pb collections posts create --file new-post.json
 }
 ```
 
+### Piping and stdin
+
+```bash
+# Pipe JSON data into create
+cat post.json | pb collections create posts
+
+# Chain get and update via jq
+pb collections get posts post_123 | jq '.title = "Updated"' | pb collections update posts post_123
+```
+
 ### Advanced Backup Operations
 
 #### Daily Backup Routine
 
 ```bash
-# Authenticate as admin first
-pb auth --collection admins
+# Authenticate as superuser first
+pb auth --collection _superusers
 
 # Create timestamped backup
 pb backup create --name "daily-$(date +%Y%m%d)"
@@ -358,7 +377,7 @@ pb backup download migration-source ./temp-backup.zip
 
 # Import to staging
 pb context select staging
-pb auth --collection admins
+pb auth --collection _superusers
 pb backup upload ./temp-backup.zip --name "from-production"
 pb backup restore from-production
 
@@ -381,7 +400,7 @@ ls -la ./verify/important-backup
 
 ```bash
 # Enable debug output
-pb --debug collections posts list
+pb --debug collections list posts
 
 # Debug authentication issues
 pb --debug auth --email user@example.com
@@ -440,56 +459,44 @@ pb context create prod \
 pb context create dev --url http://localhost:8090 --collections posts,users
 pb context select dev
 
-# Production environment  
+# Production environment
 pb context create prod --url https://api.myapp.com --collections posts,users
 pb context select prod
 
 # Switch between environments
 pb context select dev
-pb collections posts list
+pb collections list posts
 
-pb context select prod  
+pb context select prod
 pb backup list  # List production backups
-```
-
-## Error Handling
-
-pb-cli provides helpful error messages and suggestions:
-
-```bash
-# Authentication required
-$ pb collections posts list
-Error: authentication required. Please run 'pb auth' to authenticate
-
-# Collection not configured
-$ pb collections blogs list  
-Error: collection 'blogs' not configured in context. Available collections: posts, users. 
-Add with 'pb context collections add blogs'
-
-# Validation errors
-$ pb collections posts create '{"title": ""}'
-Error: validation failed:
-  - Title is required
 ```
 
 ## Tips and Tricks
 
-### 1. Use Aliases
+### 1. Use the Short Alias
+
+The `collections` command can be shortened to `c`:
+
+```bash
+pb c list posts --filter 'published=true'
+pb c get users user_123
+pb c create posts '{"title":"Quick post"}'
+pb c delete posts post_123 -f
+```
+
+### 2. Use Shell Aliases
 
 Create shell aliases for common operations:
 
 ```bash
-alias pbp="pb collections posts"
-alias pbu="pb collections users"
 alias pbb="pb backup"
 
 # Now you can use:
-pbp list --filter 'published=true'
-pbu get user_123
 pbb list
+pbb create --name "quick-backup"
 ```
 
-### 2. Context Switching
+### 3. Context Switching
 
 Quickly switch between environments:
 
@@ -498,28 +505,28 @@ alias pbdev="pb context select dev"
 alias pbprod="pb context select prod"
 
 pbdev
-pb collections posts list
+pb c list posts
 
-pbprod  
+pbprod
 pb backup list  # View production backups
 ```
 
-### 3. JSON Formatting
+### 4. JSON Formatting
 
 Use `jq` for advanced JSON processing:
 
 ```bash
 # Get just the titles
-pb collections posts list --output json | jq '.items[].title'
+pb c list posts --output json | jq '.items[].title'
 
 # Count published posts
-pb collections posts list --filter 'published=true' --output json | jq '.totalItems'
+pb c list posts --filter 'published=true' --output json | jq '.totalItems'
 
 # List backup sizes
 pb backup list --output json | jq '.[] | {name: .key, size: .size}'
 ```
 
-### 4. Backup Automation
+### 5. Backup Automation
 
 Automate backup workflows:
 
@@ -534,7 +541,7 @@ pb backup list --output json | jq -r '.[].key' | xargs -I {} pb backup download 
 pb backup list --output json | jq -r 'sort_by(.modified) | reverse | .[5:] | .[].key' | xargs -I {} pb backup delete {} --force
 ```
 
-### 5. Multi-Environment Backup Strategy
+### 6. Multi-Environment Backup Strategy
 
 Sync backups between environments:
 
@@ -546,7 +553,7 @@ pb backup create --name "daily-backup-$(date +%Y%m%d)"
 pb backup download "daily-backup-$(date +%Y%m%d)" ~/backups/prod/
 
 # Restore to staging
-pb context select staging  
+pb context select staging
 pb auth --collection _superusers
 pb backup upload ~/backups/prod/daily-backup-$(date +%Y%m%d) --name "from-prod"
 pb backup restore from-prod
@@ -563,4 +570,3 @@ pb backup restore from-prod
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-

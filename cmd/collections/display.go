@@ -32,14 +32,12 @@ func displayListTable(result *pocketbase.RecordsList, collection string) error {
 	if result.TotalPages > 1 {
 		fmt.Printf("\nPagination:\n")
 		if result.Page > 1 {
-			prevOffset := (result.Page-2) * result.PerPage
-			fmt.Printf("  Previous: --offset %d\n", prevOffset)
+			fmt.Printf("  Previous: --page %d\n", result.Page-1)
 		}
 		if result.Page < result.TotalPages {
-			nextOffset := result.Page * result.PerPage
-			fmt.Printf("  Next: --offset %d\n", nextOffset)
+			fmt.Printf("  Next: --page %d\n", result.Page+1)
 		}
-		fmt.Printf("  Page %d of %d (use --offset to navigate)\n", 
+		fmt.Printf("  Page %d of %d (use --page to navigate)\n",
 			result.Page, result.TotalPages)
 	}
 

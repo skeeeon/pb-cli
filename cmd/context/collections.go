@@ -103,7 +103,7 @@ Examples:
 			fmt.Printf("\nYou can now use these collections with:\n")
 			for _, collection := range added {
 				fmt.Printf("  %s\n", 
-					color.New(color.FgCyan).Sprintf("pb collections %s list", collection))
+					color.New(color.FgCyan).Sprintf("pb collections list %s", collection))
 			}
 		}
 
@@ -112,22 +112,20 @@ Examples:
 }
 
 var removeCollectionsCmd = &cobra.Command{
-	Use:   "remove <collection>",
-	Short: "Remove a collection from the active context",
-	Long: `Remove a collection from the active context's available collections list.
+	Use:   "remove <collections...>",
+	Short: "Remove collections from the active context",
+	Long: `Remove one or more collections from the active context's available collections list.
 
-This will prevent CRUD operations on this collection until it's added back.
+This will prevent CRUD operations on these collections until they're added back.
 
 Examples:
   pb context collections remove comments
-  pb context collections remove old_collection`,
-	Args: cobra.ExactArgs(1),
+  pb context collections remove comments old_collection`,
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := validateConfigManager(); err != nil {
 			return err
 		}
-
-		collection := args[0]
 
 		// Get active context
 		ctx, err := configManager.GetActiveContext()
@@ -135,22 +133,38 @@ Examples:
 			return fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
 		}
 
-		// Remove collection from context
-		if err := ctx.RemoveCollection(collection); err != nil {
-			yellow := color.New(color.FgYellow).SprintFunc()
-			fmt.Printf("%s Collection '%s' was not configured in this context\n", 
-				yellow("ℹ"), collection)
-			return nil
+		// Remove collections from context
+		var removed []string
+		var notFound []string
+
+		for _, collection := range args {
+			if err := ctx.RemoveCollection(collection); err != nil {
+				notFound = append(notFound, collection)
+			} else {
+				removed = append(removed, collection)
+			}
 		}
 
 		// Save updated context
-		if err := configManager.SaveContext(ctx); err != nil {
-			return fmt.Errorf("failed to save context: %w", err)
+		if len(removed) > 0 {
+			if err := configManager.SaveContext(ctx); err != nil {
+				return fmt.Errorf("failed to save context: %w", err)
+			}
 		}
 
-		// Report success
+		// Report results
 		green := color.New(color.FgGreen).SprintFunc()
-		fmt.Printf("%s Removed collection: %s\n", green("✓"), collection)
+		yellow := color.New(color.FgYellow).SprintFunc()
+
+		if len(removed) > 0 {
+			fmt.Printf("%s Removed collections: %s\n",
+				green("✓"), strings.Join(removed, ", "))
+		}
+
+		if len(notFound) > 0 {
+			fmt.Printf("%s Not configured: %s\n",
+				yellow("ℹ"), strings.Join(notFound, ", "))
+		}
 
 		return nil
 	},
@@ -196,7 +210,7 @@ Examples:
 		fmt.Printf("\nUsage examples:\n")
 		for _, collection := range collections[:min(3, len(collections))] {
 			fmt.Printf("  %s\n", 
-				color.New(color.FgCyan).Sprintf("pb collections %s list", collection))
+				color.New(color.FgCyan).Sprintf("pb collections list %s", collection))
 		}
 
 		return nil
