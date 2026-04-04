@@ -61,6 +61,10 @@ func (e *PocketBaseError) GetFriendlyMessage() string {
 		return e.handleNotFoundError()
 	case 429:
 		return "rate limit exceeded. Please wait a moment before trying again"
+	case 408:
+		return "request timed out. The operation may take longer than expected — try again"
+	case 413:
+		return "the request payload is too large for this PocketBase instance"
 	case 500:
 		return "PocketBase server error. Please try again later or contact support"
 	case 503:

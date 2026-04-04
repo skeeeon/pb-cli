@@ -140,7 +140,7 @@ func confirmDeletion(collection, recordID string, record map[string]interface{})
 	response = strings.TrimSpace(strings.ToLower(response))
 	if response != "y" && response != "yes" {
 		fmt.Fprintln(os.Stderr, "Deletion cancelled.")
-		return fmt.Errorf("deletion cancelled by user")
+		return nil
 	}
 
 	return nil

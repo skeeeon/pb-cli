@@ -119,7 +119,7 @@ func confirmDeletion(backup *pocketbase.Backup, ctx *config.Context) error {
 	response = strings.TrimSpace(strings.ToLower(response))
 	if response != "y" && response != "yes" {
 		fmt.Println("Backup deletion cancelled.")
-		return fmt.Errorf("deletion cancelled by user")
+		return nil
 	}
 
 	return nil

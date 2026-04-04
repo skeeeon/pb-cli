@@ -16,7 +16,8 @@ var (
 
 // BackupCmd represents the backup command
 var BackupCmd = &cobra.Command{
-	Use:   "backup",
+	Use:     "backup",
+	Aliases: []string{"b"},
 	Short: "Manage PocketBase backups",
 	Long: `Manage PocketBase database backups.
 

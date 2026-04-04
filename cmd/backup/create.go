@@ -85,5 +85,5 @@ Examples:
 }
 
 func init() {
-	createCmd.Flags().StringVar(&nameFlag, "name", "", "Custom backup name (optional)")
+	createCmd.Flags().StringVarP(&nameFlag, "name", "n", "", "Custom backup name (optional)")
 }
