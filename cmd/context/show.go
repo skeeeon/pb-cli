@@ -183,7 +183,7 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 			if i >= 3 { // Limit to first 3 collections
 				break
 			}
-			fmt.Printf("  %s\n", cyan(fmt.Sprintf("pb collections %s list", collection)))
+			fmt.Printf("  %s\n", cyan(fmt.Sprintf("pb collections list %s", collection)))
 		}
 		if len(ctx.PocketBase.AvailableCollections) > 3 {
 			fmt.Printf("  ... and %d more collections\n", len(ctx.PocketBase.AvailableCollections)-3)

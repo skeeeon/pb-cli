@@ -9,7 +9,8 @@ import (
 
 // ContextCmd represents the context command
 var ContextCmd = &cobra.Command{
-	Use:   "context",
+	Use:     "context",
+	Aliases: []string{"ctx"},
 	Short: "Manage PocketBase environment contexts",
 	Long: `Context management allows you to work with multiple PocketBase environments.
 Each context contains PocketBase configuration and collection settings.

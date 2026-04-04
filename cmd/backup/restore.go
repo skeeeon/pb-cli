@@ -81,7 +81,7 @@ Examples:
 			response = strings.TrimSpace(strings.ToLower(response))
 			if response != "y" && response != "yes" {
 				fmt.Println("Restore cancelled.")
-				return fmt.Errorf("restore cancelled by user")
+				return nil
 			}
 		}
 
@@ -125,7 +125,7 @@ Examples:
 		fmt.Printf("  Re-authenticate if needed: %s\n",
 			cyan("pb auth"))
 		fmt.Printf("  Verify restoration: %s\n",
-			cyan("pb collections <collection> list"))
+			cyan("pb collections list <collection>"))
 		fmt.Printf("  Create new backup: %s\n",
 			cyan("pb backup create"))
 
@@ -166,7 +166,7 @@ func confirmRestore(backup *pocketbase.Backup, ctx *config.Context) error {
 	response = strings.TrimSpace(response)
 	if response != "restore" {
 		fmt.Println("Restore cancelled.")
-		return fmt.Errorf("restore cancelled by user")
+		return nil
 	}
 
 	return nil
