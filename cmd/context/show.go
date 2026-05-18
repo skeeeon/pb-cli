@@ -128,6 +128,12 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 	fmt.Printf("%s\n", bold("PocketBase Configuration:"))
 	fmt.Printf("  URL:                %s\n", ctx.PocketBase.URL)
 	fmt.Printf("  Auth Collection:    %s\n", ctx.PocketBase.AuthCollection)
+	if ctx.PocketBase.AutoRefresh {
+		fmt.Printf("  Auto-refresh:       %s (threshold: %s)\n",
+			green("enabled"), ctx.PocketBase.GetAutoRefreshThreshold())
+	} else {
+		fmt.Printf("  Auto-refresh:       %s\n", yellow("disabled"))
+	}
 
 	// --- START: CORRECTED AUTHENTICATION STATUS LOGIC ---
 	// Authentication status

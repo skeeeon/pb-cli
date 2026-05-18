@@ -99,6 +99,10 @@ func validateActiveContext() (*config.Context, error) {
 		return nil, fmt.Errorf("authentication required. Run 'pb auth' to authenticate")
 	}
 
+	if err := pocketbase.EnsureFreshAuth(ctx, configManager); err != nil {
+		return nil, err
+	}
+
 	if !pocketbase.IsAuthValid(ctx) {
 		return nil, fmt.Errorf("authentication has expired. Run 'pb auth' to re-authenticate")
 	}

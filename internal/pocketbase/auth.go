@@ -171,6 +171,66 @@ func UpdateAuthContextFromResponse(ctx *config.Context, authResp *AuthResponse) 
 	return nil
 }
 
+// EnsureFreshAuth proactively refreshes the auth token when AutoRefresh is enabled and
+// the token is within the configured threshold of expiring. It is a no-op when auto-refresh
+// is disabled, when there is no token, when the token has already expired, or when the token
+// is not yet close to expiry. On successful refresh the context is persisted via cm.
+//
+// A refresh failure is non-fatal: we warn and return nil so the caller can proceed with the
+// existing (still valid) token and let any genuine auth failure surface from the next request.
+func EnsureFreshAuth(ctx *config.Context, cm *config.Manager) error {
+	if ctx == nil || cm == nil {
+		return nil
+	}
+	if !ctx.PocketBase.AutoRefresh {
+		return nil
+	}
+	if ctx.PocketBase.AuthToken == "" {
+		return nil
+	}
+	if ctx.PocketBase.AuthExpires == nil {
+		return nil
+	}
+
+	remaining := time.Until(*ctx.PocketBase.AuthExpires)
+	// Already expired — refresh would be rejected; let the normal "re-authenticate" error fire.
+	if remaining <= 0 {
+		return nil
+	}
+	threshold := ctx.PocketBase.GetAutoRefreshThreshold()
+	if remaining > threshold {
+		return nil
+	}
+
+	collection := ctx.PocketBase.AuthCollection
+	if collection == "" {
+		collection = config.AuthCollectionUsers
+	}
+
+	utils.PrintDebug(fmt.Sprintf("Auto-refreshing auth token (%.0fs remaining, threshold %s)",
+		remaining.Seconds(), threshold))
+
+	client := NewClientFromContext(ctx)
+	authResp, err := client.RefreshAuth(collection)
+	if err != nil {
+		utils.PrintWarning(fmt.Sprintf("auto-refresh failed: %v (continuing with existing token)", err))
+		return nil
+	}
+
+	if err := UpdateAuthContextFromResponse(ctx, authResp); err != nil {
+		utils.PrintWarning(fmt.Sprintf("auto-refresh: failed to update context: %v", err))
+		return nil
+	}
+
+	if err := cm.SaveContext(ctx); err != nil {
+		utils.PrintWarning(fmt.Sprintf("auto-refresh: failed to persist refreshed token: %v", err))
+		return nil
+	}
+
+	utils.PrintDebug("Auth token auto-refreshed and saved")
+	return nil
+}
+
 // IsAuthValid checks if the authentication in a context is still valid
 func IsAuthValid(ctx *config.Context) bool {
 	if ctx.PocketBase.AuthToken == "" {

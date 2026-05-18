@@ -3,6 +3,7 @@ package context
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -13,6 +14,8 @@ var (
 	pbURL           string
 	pbAuthCollection string
 	availableCollections []string
+	pbAutoRefresh           bool
+	pbAutoRefreshThreshold  string
 )
 
 var createCmd = &cobra.Command{
@@ -67,6 +70,18 @@ Examples:
 			}
 		}
 
+		// Validate auto-refresh threshold if provided
+		if pbAutoRefreshThreshold != "" {
+			d, err := time.ParseDuration(pbAutoRefreshThreshold)
+			if err != nil {
+				return fmt.Errorf("invalid --auto-refresh-threshold %q: %w (use e.g. '15m', '1h')",
+					pbAutoRefreshThreshold, err)
+			}
+			if d <= 0 {
+				return fmt.Errorf("--auto-refresh-threshold must be positive")
+			}
+		}
+
 		// Check if context already exists
 		if configManager.ContextExists(contextName) {
 			return fmt.Errorf("context '%s' already exists", contextName)
@@ -79,6 +94,8 @@ Examples:
 				URL:                  pbURL,
 				AuthCollection:       pbAuthCollection,
 				AvailableCollections: availableCollections,
+				AutoRefresh:          pbAutoRefresh,
+				AutoRefreshThreshold: pbAutoRefreshThreshold,
 			},
 		}
 
@@ -101,7 +118,14 @@ Examples:
 		fmt.Printf("  Name: %s\n", contextName)
 		fmt.Printf("  PocketBase URL: %s\n", pbURL)
 		fmt.Printf("  Auth Collection: %s\n", pbAuthCollection)
-		
+		if pbAutoRefresh {
+			thresholdDisplay := pbAutoRefreshThreshold
+			if thresholdDisplay == "" {
+				thresholdDisplay = config.DefaultAutoRefreshThreshold.String() + " (default)"
+			}
+			fmt.Printf("  Auto-refresh: enabled (threshold: %s)\n", thresholdDisplay)
+		}
+
 		if len(availableCollections) > 0 {
 			fmt.Printf("  Collections: %s\n", strings.Join(availableCollections, ", "))
 		} else {
@@ -128,8 +152,12 @@ func init() {
 	createCmd.Flags().StringVar(&pbURL, "url", "", "PocketBase server URL (required)")
 	createCmd.Flags().StringVar(&pbAuthCollection, "auth-collection", config.AuthCollectionUsers, 
 		"PocketBase auth collection (users|admins|clients|custom)")
-	createCmd.Flags().StringSliceVar(&availableCollections, "collections", nil, 
+	createCmd.Flags().StringSliceVar(&availableCollections, "collections", nil,
 		"Available collections (comma-separated)")
+	createCmd.Flags().BoolVar(&pbAutoRefresh, "auto-refresh", false,
+		"Automatically refresh the auth token when it's near expiry")
+	createCmd.Flags().StringVar(&pbAutoRefreshThreshold, "auto-refresh-threshold", "",
+		"Refresh when remaining lifetime falls below this duration (e.g. '15m', '1h'). Defaults to 15m")
 
 	// Mark required flags
 	createCmd.MarkFlagRequired("url")

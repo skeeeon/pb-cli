@@ -2,10 +2,10 @@ package backup
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 	"pb-cli/internal/config"
+	"pb-cli/internal/pocketbase"
 )
 
 var (
@@ -91,8 +91,11 @@ func validateActiveContext() (*config.Context, error) {
 		return nil, fmt.Errorf("authentication required. Run 'pb auth' to authenticate")
 	}
 
-	// Check if authentication is still valid (if we have expiration info)
-	if ctx.PocketBase.AuthExpires != nil && ctx.PocketBase.AuthExpires.Before(time.Now()) {
+	if err := pocketbase.EnsureFreshAuth(ctx, configManager); err != nil {
+		return nil, err
+	}
+
+	if !pocketbase.IsAuthValid(ctx) {
 		return nil, fmt.Errorf("authentication has expired. Run 'pb auth' to re-authenticate")
 	}
 

@@ -29,6 +29,24 @@ type PocketBaseConfig struct {
 	AuthToken              string                 `yaml:"auth_token"`              // Session token
 	AuthExpires            *time.Time             `yaml:"auth_expires"`            // Token expiration
 	AuthRecord             map[string]interface{} `yaml:"auth_record"`             // Cached auth record
+	AutoRefresh            bool                   `yaml:"auto_refresh"`            // Refresh token proactively when nearing expiry
+	AutoRefreshThreshold   string                 `yaml:"auto_refresh_threshold"`  // Duration string (e.g. "15m"); empty => default
+}
+
+// DefaultAutoRefreshThreshold is used when AutoRefresh is enabled but no threshold is set.
+const DefaultAutoRefreshThreshold = 15 * time.Minute
+
+// GetAutoRefreshThreshold returns the parsed auto-refresh threshold, falling back to
+// DefaultAutoRefreshThreshold on empty or invalid values.
+func (p *PocketBaseConfig) GetAutoRefreshThreshold() time.Duration {
+	if p.AutoRefreshThreshold == "" {
+		return DefaultAutoRefreshThreshold
+	}
+	d, err := time.ParseDuration(p.AutoRefreshThreshold)
+	if err != nil || d <= 0 {
+		return DefaultAutoRefreshThreshold
+	}
+	return d
 }
 
 // Output format constants
