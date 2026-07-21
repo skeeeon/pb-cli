@@ -75,13 +75,13 @@ func (c *Client) newTransferClient() *resty.Client {
 // NewClientFromContext creates a PocketBase client from a context configuration
 func NewClientFromContext(ctx *config.Context) *Client {
 	client := NewClient(ctx.PocketBase.URL)
-	
+
 	// Set authentication if available
 	if ctx.PocketBase.AuthToken != "" {
 		client.SetAuthToken(ctx.PocketBase.AuthToken)
 		client.authRecord = ctx.PocketBase.AuthRecord
 	}
-	
+
 	return client
 }
 
@@ -180,11 +180,11 @@ func (c *Client) GetHealth() error {
 	if err != nil {
 		return fmt.Errorf("health check failed: %w", err)
 	}
-	
+
 	if resp.StatusCode() != 200 {
 		return fmt.Errorf("server returned status %d", resp.StatusCode())
 	}
-	
+
 	return nil
 }
 
@@ -193,9 +193,9 @@ func (c *Client) ListRecords(collection string, options *ListOptions) (*RecordsL
 	if !c.IsAuthenticated() {
 		return nil, fmt.Errorf("authentication required")
 	}
-	
+
 	endpoint := fmt.Sprintf("collections/%s/records", collection)
-	
+
 	// Add query parameters
 	req := c.httpClient.R()
 	if options != nil {
@@ -218,23 +218,23 @@ func (c *Client) ListRecords(collection string, options *ListOptions) (*RecordsL
 			req.SetQueryParam("expand", strings.Join(options.Expand, ","))
 		}
 	}
-	
+
 	url := fmt.Sprintf("%s/api/%s", c.baseURL, endpoint)
 	resp, err := req.Get(url)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to list records: %w", err)
 	}
-	
+
 	if resp.StatusCode() >= 400 {
 		return nil, NewPocketBaseError(resp)
 	}
-	
+
 	var result RecordsList
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse records response: %w", err)
 	}
-	
+
 	return &result, nil
 }
 
@@ -243,9 +243,9 @@ func (c *Client) GetRecord(collection, id string, expand []string, fields []stri
 	if !c.IsAuthenticated() {
 		return nil, fmt.Errorf("authentication required")
 	}
-	
+
 	endpoint := fmt.Sprintf("collections/%s/records/%s", collection, id)
-	
+
 	req := c.httpClient.R()
 	if len(expand) > 0 {
 		req.SetQueryParam("expand", strings.Join(expand, ","))
@@ -253,23 +253,23 @@ func (c *Client) GetRecord(collection, id string, expand []string, fields []stri
 	if len(fields) > 0 {
 		req.SetQueryParam("fields", strings.Join(fields, ","))
 	}
-	
+
 	url := fmt.Sprintf("%s/api/%s", c.baseURL, endpoint)
 	resp, err := req.Get(url)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record: %w", err)
 	}
-	
+
 	if resp.StatusCode() >= 400 {
 		return nil, NewPocketBaseError(resp)
 	}
-	
+
 	var result map[string]interface{}
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse record response: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -278,19 +278,19 @@ func (c *Client) CreateRecord(collection string, data map[string]interface{}) (m
 	if !c.IsAuthenticated() {
 		return nil, fmt.Errorf("authentication required")
 	}
-	
+
 	endpoint := fmt.Sprintf("collections/%s/records", collection)
-	
+
 	resp, err := c.makeRequest("POST", endpoint, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create record: %w", err)
 	}
-	
+
 	var result map[string]interface{}
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse create response: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -299,19 +299,19 @@ func (c *Client) UpdateRecord(collection, id string, data map[string]interface{}
 	if !c.IsAuthenticated() {
 		return nil, fmt.Errorf("authentication required")
 	}
-	
+
 	endpoint := fmt.Sprintf("collections/%s/records/%s", collection, id)
-	
+
 	resp, err := c.makeRequest("PATCH", endpoint, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update record: %w", err)
 	}
-	
+
 	var result map[string]interface{}
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse update response: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -320,14 +320,14 @@ func (c *Client) DeleteRecord(collection, id string) error {
 	if !c.IsAuthenticated() {
 		return fmt.Errorf("authentication required")
 	}
-	
+
 	endpoint := fmt.Sprintf("collections/%s/records/%s", collection, id)
-	
+
 	_, err := c.makeRequest("DELETE", endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to delete record: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -380,18 +380,18 @@ func (c *Client) CreateBackup(name string) (*Backup, error) {
 	// Handle 204 No Content response (successful backup creation with no body)
 	if resp.StatusCode() == 204 {
 		utils.PrintDebug("Backup created successfully (204 No Content)")
-		
+
 		// Since we don't get backup details in the response, we need to fetch it
 		// by listing backups and finding the most recent one
 		backups, err := c.ListBackups()
 		if err != nil {
 			return nil, fmt.Errorf("backup created but failed to retrieve details: %w", err)
 		}
-		
+
 		if len(backups) == 0 {
 			return nil, fmt.Errorf("backup created but no backups found")
 		}
-		
+
 		// Find the most recent backup (assuming it's the one we just created)
 		var mostRecent *Backup
 		for i := range backups {
@@ -399,11 +399,11 @@ func (c *Client) CreateBackup(name string) (*Backup, error) {
 				mostRecent = &backups[i]
 			}
 		}
-		
+
 		if mostRecent == nil {
 			return nil, fmt.Errorf("backup created but could not identify the new backup")
 		}
-		
+
 		utils.PrintDebug(fmt.Sprintf("Found most recent backup: %s", mostRecent.Key))
 		return mostRecent, nil
 	}
@@ -473,9 +473,9 @@ func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progre
 
 	// Step 4: Download using file token
 	url := fmt.Sprintf("%s/api/backups/%s", c.baseURL, backupKey)
-	
+
 	utils.PrintDebug(fmt.Sprintf("Downloading from URL: %s", url))
-	
+
 	// Create a fresh client without auth headers but with file token as query param.
 	// No timeout: large backups can take a long time to stream.
 	downloadClient := resty.New()
@@ -485,7 +485,7 @@ func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progre
 		SetQueryParam("token", fileToken).
 		SetDoNotParseResponse(true).
 		Get(url)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to download backup: %w", err)
 	}
@@ -512,7 +512,7 @@ func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progre
 	}
 
 	utils.PrintDebug(fmt.Sprintf("Downloaded %d bytes to: %s", written, outputPath))
-	
+
 	if written == 0 {
 		return fmt.Errorf("downloaded file is empty")
 	}
@@ -541,9 +541,9 @@ func (c *Client) UploadBackup(filePath, backupName string, progressCallback func
 
 	// Use the correct PocketBase upload endpoint with proper authentication
 	url := fmt.Sprintf("%s/api/backups/upload", c.baseURL)
-	
+
 	utils.PrintDebug(fmt.Sprintf("Upload URL: %s", url))
-	
+
 	// Upload using authenticated client without the API timeout, since large
 	// backups can take a long time to transfer.
 	resp, err := c.newTransferClient().R().
@@ -564,14 +564,14 @@ func (c *Client) UploadBackup(filePath, backupName string, progressCallback func
 	// Handle different response patterns
 	if resp.StatusCode() == 204 {
 		utils.PrintDebug("Backup uploaded successfully (204 No Content)")
-		
+
 		// For 204 responses, we need to determine the backup name
 		// If no custom name provided, use the original filename
 		uploadedName := backupName
 		if uploadedName == "" {
 			uploadedName = filepath.Base(filePath)
 		}
-		
+
 		// Try to fetch the uploaded backup info
 		backup, err := c.GetBackup(uploadedName)
 		if err != nil {
@@ -583,7 +583,7 @@ func (c *Client) UploadBackup(filePath, backupName string, progressCallback func
 				Size: fileInfo.Size(),
 			}, nil
 		}
-		
+
 		return backup, nil
 	}
 

@@ -61,4 +61,3 @@ func TestValidatePocketBaseURL(t *testing.T) {
 		})
 	}
 }
-

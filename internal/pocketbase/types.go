@@ -52,12 +52,12 @@ func (pbt *PBTime) UnmarshalJSON(data []byte) error {
 
 	// Try multiple time formats that PocketBase might use
 	formats := []string{
-		"2006-01-02 15:04:05.999Z",      // PocketBase format with space and microseconds
-		"2006-01-02 15:04:05Z",          // PocketBase format with space, no microseconds
-		time.RFC3339,                    // "2006-01-02T15:04:05Z07:00"
-		time.RFC3339Nano,                // "2006-01-02T15:04:05.999999999Z07:00"
-		"2006-01-02T15:04:05.999Z",      // Standard with microseconds
-		"2006-01-02T15:04:05Z",          // Standard without microseconds
+		"2006-01-02 15:04:05.999Z", // PocketBase format with space and microseconds
+		"2006-01-02 15:04:05Z",     // PocketBase format with space, no microseconds
+		time.RFC3339,               // "2006-01-02T15:04:05Z07:00"
+		time.RFC3339Nano,           // "2006-01-02T15:04:05.999999999Z07:00"
+		"2006-01-02T15:04:05.999Z", // Standard with microseconds
+		"2006-01-02T15:04:05Z",     // Standard without microseconds
 	}
 
 	for _, format := range formats {

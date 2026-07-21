@@ -38,7 +38,7 @@ Examples:
 
 		if len(contexts) == 0 {
 			fmt.Printf("No contexts configured in %s.\n", configManager.GetConfigDir())
-			fmt.Printf("\nCreate your first context:\n  %s\n", 
+			fmt.Printf("\nCreate your first context:\n  %s\n",
 				color.New(color.FgCyan).Sprint("pb context create <name> --url <url> --collections <collections>"))
 			return nil
 		}
@@ -54,10 +54,10 @@ Examples:
 
 		// Show active context summary
 		if globalConfig.ActiveContext != "" {
-			fmt.Printf("\nActive context: %s\n", 
+			fmt.Printf("\nActive context: %s\n",
 				color.New(color.FgCyan).Sprint(globalConfig.ActiveContext))
 		} else {
-			fmt.Printf("\nNo active context set. Use %s to select one.\n", 
+			fmt.Printf("\nNo active context set. Use %s to select one.\n",
 				color.New(color.FgCyan).Sprint("pb context select <name>"))
 		}
 
@@ -67,14 +67,14 @@ Examples:
 
 // ContextDisplayInfo holds processed context information for display
 type ContextDisplayInfo struct {
-	Name          string
-	Status        string
-	PocketBaseURL string
-	Collections   string
+	Name           string
+	Status         string
+	PocketBaseURL  string
+	Collections    string
 	AuthCollection string
-	LastAuth      string
-	IsActive      bool
-	HasError      bool
+	LastAuth       string
+	IsActive       bool
+	HasError       bool
 }
 
 // displayContextsTable processes contexts and displays them in a properly formatted table
@@ -88,7 +88,7 @@ func displayContextsTable(contextNames []string, activeContext string) {
 
 	// Create and configure table
 	table := createContextTable()
-	
+
 	// Add rows to table
 	for _, ctx := range contexts {
 		table.Append([]string{
@@ -110,37 +110,37 @@ func processContextForDisplay(contextName, activeContext string) ContextDisplayI
 	ctx, err := configManager.LoadContext(contextName)
 	if err != nil {
 		return ContextDisplayInfo{
-			Name:          contextName,
-			Status:        color.New(color.FgRed).Sprint("ERROR"),
-			PocketBaseURL: "N/A",
-			Collections:   "N/A",
-			AuthCollection: "N/A", 
-			LastAuth:      "N/A",
-			HasError:      true,
+			Name:           contextName,
+			Status:         color.New(color.FgRed).Sprint("ERROR"),
+			PocketBaseURL:  "N/A",
+			Collections:    "N/A",
+			AuthCollection: "N/A",
+			LastAuth:       "N/A",
+			HasError:       true,
 		}
 	}
 
 	isActive := activeContext == contextName
-	
+
 	return ContextDisplayInfo{
-		Name:          formatContextName(contextName, isActive),
-		Status:        formatContextStatus(ctx, isActive),
-		PocketBaseURL: formatPocketBaseURL(ctx.PocketBase.URL),
+		Name:           formatContextName(contextName, isActive),
+		Status:         formatContextStatus(ctx, isActive),
+		PocketBaseURL:  formatPocketBaseURL(ctx.PocketBase.URL),
 		AuthCollection: formatAuthCollection(ctx.PocketBase.AuthCollection),
-		Collections:   formatCollections(ctx.PocketBase.AvailableCollections),
-		LastAuth:      formatLastAuth(ctx),
-		IsActive:      isActive,
-		HasError:      false,
+		Collections:    formatCollections(ctx.PocketBase.AvailableCollections),
+		LastAuth:       formatLastAuth(ctx),
+		IsActive:       isActive,
+		HasError:       false,
 	}
 }
 
 // createContextTable creates and configures the table with proper column settings
 func createContextTable() *tablewriter.Table {
 	table := tablewriter.NewWriter(os.Stdout)
-	
+
 	// Set headers
 	table.SetHeader([]string{"NAME", "STATUS", "POCKETBASE URL", "AUTH COLLECTION", "COLLECTIONS", "LAST AUTH"})
-	
+
 	// Configure table appearance - no borders for clean look
 	table.SetBorder(false)
 	table.SetHeaderLine(false)
@@ -151,19 +151,19 @@ func createContextTable() *tablewriter.Table {
 	table.SetNoWhiteSpace(false)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	
+
 	// Prevent text wrapping and set wider table width
 	table.SetColWidth(150)
 	table.SetAutoWrapText(false) // Critical: disable auto-wrapping
-	
+
 	// Set minimum column widths for better formatting
-	table.SetColMinWidth(0, 12)  // NAME column
-	table.SetColMinWidth(1, 18)  // STATUS column
-	table.SetColMinWidth(2, 25)  // POCKETBASE URL column
-	table.SetColMinWidth(3, 15)  // AUTH COLLECTION column
-	table.SetColMinWidth(4, 20)  // COLLECTIONS column
-	table.SetColMinWidth(5, 12)  // LAST AUTH column
-	
+	table.SetColMinWidth(0, 12) // NAME column
+	table.SetColMinWidth(1, 18) // STATUS column
+	table.SetColMinWidth(2, 25) // POCKETBASE URL column
+	table.SetColMinWidth(3, 15) // AUTH COLLECTION column
+	table.SetColMinWidth(4, 20) // COLLECTIONS column
+	table.SetColMinWidth(5, 12) // LAST AUTH column
+
 	return table
 }
 
@@ -179,9 +179,9 @@ func formatContextName(name string, isActive bool) string {
 func formatContextStatus(ctx *config.Context, isActive bool) string {
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
-	
+
 	hasAuth := ctx.PocketBase.AuthToken != ""
-	
+
 	if isActive && hasAuth {
 		return green("Active & Authenticated")
 	} else if isActive && !hasAuth {
@@ -225,7 +225,7 @@ func formatCollections(collections []string) string {
 	}
 
 	// Show first 2 collections with count indicator
-	return fmt.Sprintf("%s, %s (+%d more)", 
+	return fmt.Sprintf("%s, %s (+%d more)",
 		collections[0], collections[1], len(collections)-2)
 }
 

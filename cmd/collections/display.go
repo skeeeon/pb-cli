@@ -17,7 +17,7 @@ func displayListTable(result *pocketbase.RecordsList, collection string) error {
 	}
 
 	// Show pagination info
-	fmt.Printf("%s (%d-%d of %d total)\n\n", 
+	fmt.Printf("%s (%d-%d of %d total)\n\n",
 		utils.TitleCase(collection),
 		((result.Page-1)*result.PerPage)+1,
 		min(result.Page*result.PerPage, result.TotalItems),
@@ -67,13 +67,13 @@ func displayGetTable(record map[string]interface{}, collection, recordID string)
 func displayRecordDetails(record map[string]interface{}, collection string) error {
 	// Common important fields that should be displayed first
 	priorityFields := []string{"id", "name", "title", "email", "username"}
-	
+
 	// Descriptive fields that should come next
 	descriptiveFields := []string{"description", "content", "bio", "summary"}
-	
+
 	// Status and type fields
 	statusFields := []string{"active", "published", "status", "type", "category"}
-	
+
 	// Time fields that should be displayed last
 	timeFields := []string{"created", "updated", "deleted"}
 
@@ -105,7 +105,7 @@ func displayRecordDetails(record map[string]interface{}, collection string) erro
 	for _, field := range allKnownFields {
 		skipFields[field] = true
 	}
-	
+
 	// Skip expand field as it will be handled separately
 	skipFields["expand"] = true
 
@@ -169,7 +169,7 @@ func displayExpandedRelations(expand interface{}) error {
 	case map[string]interface{}:
 		for relationName, relationData := range expandData {
 			fmt.Printf("  %s:\n", utils.TitleCase(relationName))
-			
+
 			switch relData := relationData.(type) {
 			case []interface{}:
 				// Multiple related records
@@ -196,7 +196,7 @@ func displayExpandedRelations(expand interface{}) error {
 	default:
 		return fmt.Errorf("unexpected expand data format")
 	}
-	
+
 	return nil
 }
 
@@ -209,7 +209,7 @@ func getRecordDisplayName(record map[string]interface{}) string {
 			return name
 		}
 	}
-	
+
 	// Try email or username
 	if email, ok := record["email"].(string); ok && email != "" {
 		return email
@@ -217,11 +217,11 @@ func getRecordDisplayName(record map[string]interface{}) string {
 	if username, ok := record["username"].(string); ok && username != "" {
 		return username
 	}
-	
+
 	// Fallback to ID
 	if id, ok := record["id"].(string); ok {
 		return fmt.Sprintf("ID: %s", id)
 	}
-	
+
 	return ""
 }

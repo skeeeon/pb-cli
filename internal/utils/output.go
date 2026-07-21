@@ -9,8 +9,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
-	"pb-cli/internal/config"
 	"gopkg.in/yaml.v3"
+	"pb-cli/internal/config"
 )
 
 // OutputData formats and prints data according to the specified format
@@ -70,7 +70,7 @@ func outputMapSliceTable(data []map[string]interface{}) error {
 	// Extract headers from first item, prioritizing common fields
 	var headers []string
 	commonFields := []string{"id", "name", "title", "email", "created", "updated"}
-	
+
 	// Add common fields first if they exist
 	firstItem := data[0]
 	for _, field := range commonFields {
@@ -78,7 +78,7 @@ func outputMapSliceTable(data []map[string]interface{}) error {
 			headers = append(headers, field)
 		}
 	}
-	
+
 	// Add remaining fields
 	for key := range firstItem {
 		found := false
@@ -132,14 +132,14 @@ func outputMapTable(data map[string]interface{}) error {
 	// Sort fields for consistent output
 	priorityFields := []string{"id", "name", "title", "email", "description", "type", "created", "updated"}
 	var orderedKeys []string
-	
+
 	// Add priority fields first
 	for _, field := range priorityFields {
 		if _, exists := data[field]; exists {
 			orderedKeys = append(orderedKeys, field)
 		}
 	}
-	
+
 	// Add remaining fields
 	for key := range data {
 		found := false
@@ -274,7 +274,7 @@ func TitleCase(s string) string {
 func FormatTimeAgo(t time.Time) string {
 	now := time.Now()
 	diff := now.Sub(t)
-	
+
 	if diff < time.Minute {
 		return "just now"
 	} else if diff < time.Hour {

@@ -42,7 +42,7 @@ Examples:
 			// Try to provide helpful suggestions
 			contexts, listErr := configManager.ListContexts()
 			if listErr == nil && len(contexts) > 0 {
-				return fmt.Errorf("context '%s' not found. Available contexts: %v", 
+				return fmt.Errorf("context '%s' not found. Available contexts: %v",
 					contextName, contexts)
 			}
 			return fmt.Errorf("context '%s' not found", contextName)
@@ -63,12 +63,12 @@ Examples:
 
 		contextDir := configManager.GetContextDir(contextName)
 
-		fmt.Printf("%s Context to be deleted: %s\n", 
+		fmt.Printf("%s Context to be deleted: %s\n",
 			red("⚠"), bold(contextName))
 		fmt.Printf("  Directory: %s\n", contextDir)
 		fmt.Printf("  PocketBase URL: %s\n", ctx.PocketBase.URL)
 		fmt.Printf("  Auth Collection: %s\n", ctx.PocketBase.AuthCollection)
-		
+
 		if len(ctx.PocketBase.AvailableCollections) > 0 {
 			fmt.Printf("  Collections: %v\n", ctx.PocketBase.AvailableCollections)
 		} else {
@@ -81,7 +81,7 @@ Examples:
 
 		// Confirmation prompt (unless --force is used)
 		if !forceDelete {
-			fmt.Printf("\n%s This will permanently delete the entire context directory and all its contents.\n", 
+			fmt.Printf("\n%s This will permanently delete the entire context directory and all its contents.\n",
 				yellow("Warning:"))
 			fmt.Print("Are you sure you want to delete this context? (y/N): ")
 
@@ -107,14 +107,14 @@ Examples:
 		if isActive {
 			globalConfig.ActiveContext = ""
 			if err := configManager.SaveGlobalConfig(globalConfig); err != nil {
-				fmt.Printf("%s Context deleted but failed to clear active context: %v\n", 
+				fmt.Printf("%s Context deleted but failed to clear active context: %v\n",
 					yellow("Warning:"), err)
 			}
 		}
 
 		// Success message
 		green := color.New(color.FgGreen).SprintFunc()
-		fmt.Printf("%s Context '%s' and its directory deleted successfully\n", 
+		fmt.Printf("%s Context '%s' and its directory deleted successfully\n",
 			green("✓"), contextName)
 
 		// Show next steps if needed
@@ -123,12 +123,12 @@ Examples:
 			if err == nil && len(contexts) > 0 {
 				fmt.Printf("\nSelect a new active context:\n")
 				for _, ctx := range contexts {
-					fmt.Printf("  %s\n", 
+					fmt.Printf("  %s\n",
 						color.New(color.FgCyan).Sprintf("pb context select %s", ctx))
 				}
 			} else {
 				fmt.Printf("\nCreate a new context:\n")
-				fmt.Printf("  %s\n", 
+				fmt.Printf("  %s\n",
 					color.New(color.FgCyan).Sprint("pb context create <name> --url <url> --collections <collections>"))
 			}
 		}
@@ -138,6 +138,6 @@ Examples:
 }
 
 func init() {
-	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false, 
+	deleteCmd.Flags().BoolVarP(&forceDelete, "force", "f", false,
 		"Skip confirmation prompt")
 }

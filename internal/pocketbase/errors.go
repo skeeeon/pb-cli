@@ -73,11 +73,11 @@ func (e *PocketBaseError) GetFriendlyMessage() string {
 
 	// Handle specific error messages
 	msgLower := strings.ToLower(e.Message)
-	
+
 	// Authentication errors
 	if strings.Contains(msgLower, "invalid credentials") ||
-	   strings.Contains(msgLower, "wrong email or password") ||
-	   strings.Contains(msgLower, "invalid login credentials") {
+		strings.Contains(msgLower, "wrong email or password") ||
+		strings.Contains(msgLower, "invalid login credentials") {
 		return "invalid email or password. Please check your credentials and try again"
 	}
 
@@ -122,7 +122,7 @@ func (e *PocketBaseError) handleBadRequestError() string {
 	}
 
 	msgLower := strings.ToLower(e.Message)
-	
+
 	if strings.Contains(msgLower, "invalid json") {
 		return "invalid request format. Please check your JSON input"
 	}
@@ -139,8 +139,8 @@ func (e *PocketBaseError) handleUnauthorizedError() string {
 	msgLower := strings.ToLower(e.Message)
 
 	if strings.Contains(msgLower, "missing authorization header") ||
-	   strings.Contains(msgLower, "invalid auth token") ||
-	   strings.Contains(msgLower, "expired") {
+		strings.Contains(msgLower, "invalid auth token") ||
+		strings.Contains(msgLower, "expired") {
 		return "authentication required. Please run 'pb auth' to authenticate"
 	}
 
@@ -260,24 +260,24 @@ func titleWords(s string) string {
 
 // IsAuthenticationError checks if the error is related to authentication
 func (e *PocketBaseError) IsAuthenticationError() bool {
-	return e.StatusCode == 401 || 
-		   strings.Contains(strings.ToLower(e.Message), "auth") ||
-		   strings.Contains(strings.ToLower(e.Message), "unauthorized") ||
-		   strings.Contains(strings.ToLower(e.Message), "credentials")
+	return e.StatusCode == 401 ||
+		strings.Contains(strings.ToLower(e.Message), "auth") ||
+		strings.Contains(strings.ToLower(e.Message), "unauthorized") ||
+		strings.Contains(strings.ToLower(e.Message), "credentials")
 }
 
 // IsPermissionError checks if the error is related to permissions
 func (e *PocketBaseError) IsPermissionError() bool {
 	return e.StatusCode == 403 ||
-		   strings.Contains(strings.ToLower(e.Message), "forbidden") ||
-		   strings.Contains(strings.ToLower(e.Message), "permission") ||
-		   strings.Contains(strings.ToLower(e.Message), "access denied")
+		strings.Contains(strings.ToLower(e.Message), "forbidden") ||
+		strings.Contains(strings.ToLower(e.Message), "permission") ||
+		strings.Contains(strings.ToLower(e.Message), "access denied")
 }
 
 // IsNotFoundError checks if the error is a not found error
 func (e *PocketBaseError) IsNotFoundError() bool {
 	return e.StatusCode == 404 ||
-		   strings.Contains(strings.ToLower(e.Message), "not found")
+		strings.Contains(strings.ToLower(e.Message), "not found")
 }
 
 // IsValidationError checks if the error is a validation error

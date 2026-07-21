@@ -90,9 +90,9 @@ Examples:
 			if total > 0 {
 				progress := int((downloaded * 100) / total)
 				if progress != lastProgress && progress%10 == 0 { // Show every 10%
-					fmt.Printf("  Progress: %d%% (%s / %s)\n", 
-						progress, 
-						utils.FormatBytes(downloaded), 
+					fmt.Printf("  Progress: %d%% (%s / %s)\n",
+						progress,
+						utils.FormatBytes(downloaded),
 						utils.FormatBytes(total))
 					lastProgress = progress
 				}
@@ -114,7 +114,7 @@ Examples:
 		// Display success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
+
 		fmt.Printf("\n%s Backup downloaded successfully!\n", green("✓"))
 		fmt.Printf("  Downloaded: %s\n", backup.GetHumanSize())
 		fmt.Printf("  Location: %s\n", outputPath)
@@ -122,9 +122,9 @@ Examples:
 
 		// Show next steps
 		fmt.Printf("\nNext steps:\n")
-		fmt.Printf("  Restore from backup: %s\n", 
+		fmt.Printf("  Restore from backup: %s\n",
 			cyan(fmt.Sprintf("pb backup restore %s", backupName)))
-		fmt.Printf("  Upload to another instance: %s\n", 
+		fmt.Printf("  Upload to another instance: %s\n",
 			cyan(fmt.Sprintf("pb backup upload %s", outputPath)))
 
 		return nil

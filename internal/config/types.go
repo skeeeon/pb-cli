@@ -8,29 +8,29 @@ import (
 
 // GlobalConfig represents the global CLI configuration
 type GlobalConfig struct {
-	ActiveContext       string `yaml:"active_context"`
-	OutputFormat        string `yaml:"output_format"`        // json|yaml|table
-	ColorsEnabled       bool   `yaml:"colors_enabled"`
-	PaginationSize      int    `yaml:"pagination_size"`
-	Debug               bool   `yaml:"debug"`
+	ActiveContext  string `yaml:"active_context"`
+	OutputFormat   string `yaml:"output_format"` // json|yaml|table
+	ColorsEnabled  bool   `yaml:"colors_enabled"`
+	PaginationSize int    `yaml:"pagination_size"`
+	Debug          bool   `yaml:"debug"`
 }
 
 // Context represents a single environment context configuration
 type Context struct {
-	Name       string             `yaml:"name"`
-	PocketBase PocketBaseConfig   `yaml:"pocketbase"`
+	Name       string           `yaml:"name"`
+	PocketBase PocketBaseConfig `yaml:"pocketbase"`
 }
 
 // PocketBaseConfig contains PocketBase-specific configuration
 type PocketBaseConfig struct {
-	URL                    string                 `yaml:"url"`
-	AuthCollection         string                 `yaml:"auth_collection"`         // users|admins|clients|custom
-	AvailableCollections   []string               `yaml:"available_collections"`   // manually configured
-	AuthToken              string                 `yaml:"auth_token"`              // Session token
-	AuthExpires            *time.Time             `yaml:"auth_expires"`            // Token expiration
-	AuthRecord             map[string]interface{} `yaml:"auth_record"`             // Cached auth record
-	AutoRefresh            bool                   `yaml:"auto_refresh"`            // Refresh token proactively when nearing expiry
-	AutoRefreshThreshold   string                 `yaml:"auto_refresh_threshold"`  // Duration string (e.g. "15m"); empty => default
+	URL                  string                 `yaml:"url"`
+	AuthCollection       string                 `yaml:"auth_collection"`        // users|admins|clients|custom
+	AvailableCollections []string               `yaml:"available_collections"`  // manually configured
+	AuthToken            string                 `yaml:"auth_token"`             // Session token
+	AuthExpires          *time.Time             `yaml:"auth_expires"`           // Token expiration
+	AuthRecord           map[string]interface{} `yaml:"auth_record"`            // Cached auth record
+	AutoRefresh          bool                   `yaml:"auto_refresh"`           // Refresh token proactively when nearing expiry
+	AutoRefreshThreshold string                 `yaml:"auto_refresh_threshold"` // Duration string (e.g. "15m"); empty => default
 }
 
 // DefaultAutoRefreshThreshold is used when AutoRefresh is enabled but no threshold is set.
@@ -69,12 +69,12 @@ func ValidateAuthCollection(collection string) error {
 	if collection == "" {
 		return fmt.Errorf("auth collection cannot be empty")
 	}
-	
+
 	// Basic validation - PocketBase will handle the actual validation
 	if len(collection) < 1 || len(collection) > 50 {
 		return fmt.Errorf("auth collection name must be between 1 and 50 characters")
 	}
-	
+
 	return nil
 }
 
@@ -83,12 +83,12 @@ func ValidateCollectionName(collection string) error {
 	if collection == "" {
 		return fmt.Errorf("collection name cannot be empty")
 	}
-	
+
 	// Basic validation - PocketBase will handle the actual validation
 	if len(collection) < 1 || len(collection) > 50 {
 		return fmt.Errorf("collection name must be between 1 and 50 characters")
 	}
-	
+
 	return nil
 }
 
@@ -97,13 +97,13 @@ func ValidateCollections(collections []string) error {
 	if len(collections) == 0 {
 		return fmt.Errorf("at least one collection must be specified")
 	}
-	
+
 	for _, collection := range collections {
 		if err := ValidateCollectionName(collection); err != nil {
 			return fmt.Errorf("invalid collection '%s': %w", collection, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -122,12 +122,12 @@ func (c *Context) AddCollection(collection string) error {
 	if err := ValidateCollectionName(collection); err != nil {
 		return err
 	}
-	
+
 	// Check if already exists
 	if c.IsCollectionAvailable(collection) {
 		return fmt.Errorf("collection '%s' already exists in context", collection)
 	}
-	
+
 	c.PocketBase.AvailableCollections = append(c.PocketBase.AvailableCollections, collection)
 	return nil
 }
@@ -151,11 +151,11 @@ func (c *Context) RemoveCollection(collection string) error {
 func (c *Context) GetCollectionValidationError(collection string) error {
 	available := c.PocketBase.AvailableCollections
 	if len(available) == 0 {
-		return fmt.Errorf("collection '%s' not configured in context. No collections available. Add collections with 'pb context collections add %s'", 
+		return fmt.Errorf("collection '%s' not configured in context. No collections available. Add collections with 'pb context collections add %s'",
 			collection, collection)
 	}
-	
-	return fmt.Errorf("collection '%s' not configured in context. Available collections: %s. Add with 'pb context collections add %s'", 
+
+	return fmt.Errorf("collection '%s' not configured in context. Available collections: %s. Add with 'pb context collections add %s'",
 		collection, strings.Join(available, ", "), collection)
 }
 

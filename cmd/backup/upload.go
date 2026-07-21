@@ -67,9 +67,9 @@ Examples:
 			if total > 0 {
 				progress := int((uploaded * 100) / total)
 				if progress != lastProgress && progress%10 == 0 { // Show every 10%
-					fmt.Printf("  Progress: %d%% (%s / %s)\n", 
-						progress, 
-						utils.FormatBytes(uploaded), 
+					fmt.Printf("  Progress: %d%% (%s / %s)\n",
+						progress,
+						utils.FormatBytes(uploaded),
 						utils.FormatBytes(total))
 					lastProgress = progress
 				}
@@ -91,9 +91,9 @@ Examples:
 		// Display success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
+
 		fmt.Printf("\n%s Backup uploaded successfully!\n", green("✓"))
-		
+
 		if backup != nil {
 			fmt.Printf("\nUpload Results:\n")
 			fmt.Printf("  Backup name: %s\n", backup.Key)
@@ -107,16 +107,16 @@ Examples:
 
 			// Show next steps
 			fmt.Printf("\nNext steps:\n")
-			fmt.Printf("  List all backups: %s\n", 
+			fmt.Printf("  List all backups: %s\n",
 				cyan("pb backup list"))
-			fmt.Printf("  Restore from backup: %s\n", 
+			fmt.Printf("  Restore from backup: %s\n",
 				cyan(fmt.Sprintf("pb backup restore %s", backup.Key)))
 		} else {
 			fmt.Printf("  File: %s\n", filePath)
 			fmt.Printf("  Context: %s\n", cyan(ctx.Name))
-			
+
 			fmt.Printf("\nNext steps:\n")
-			fmt.Printf("  List all backups: %s\n", 
+			fmt.Printf("  List all backups: %s\n",
 				cyan("pb backup list"))
 		}
 

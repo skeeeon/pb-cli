@@ -64,7 +64,7 @@ func (m *Manager) EnsureBackupDir(name string) error {
 // LoadGlobalConfig loads the global configuration
 func (m *Manager) LoadGlobalConfig() (*GlobalConfig, error) {
 	configPath := m.GetGlobalConfigPath()
-	
+
 	// Create default config if file doesn't exist
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		defaultConfig := &GlobalConfig{
@@ -73,11 +73,11 @@ func (m *Manager) LoadGlobalConfig() (*GlobalConfig, error) {
 			ColorsEnabled:  true,
 			PaginationSize: 30,
 		}
-		
+
 		if err := m.SaveGlobalConfig(defaultConfig); err != nil {
 			return nil, fmt.Errorf("failed to create default config: %w", err)
 		}
-		
+
 		return defaultConfig, nil
 	}
 
@@ -97,7 +97,7 @@ func (m *Manager) LoadGlobalConfig() (*GlobalConfig, error) {
 // SaveGlobalConfig saves the global configuration
 func (m *Manager) SaveGlobalConfig(config *GlobalConfig) error {
 	configPath := m.GetGlobalConfigPath()
-	
+
 	data, err := yaml.Marshal(config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
@@ -117,7 +117,7 @@ func (m *Manager) LoadContext(name string) (*Context, error) {
 	}
 
 	contextPath := m.GetContextPath(name)
-	
+
 	if _, err := os.Stat(contextPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("context '%s' not found", name)
 	}
@@ -154,7 +154,7 @@ func (m *Manager) SaveContext(context *Context) error {
 
 	// Save context configuration
 	contextPath := m.GetContextPath(context.Name)
-	
+
 	data, err := yaml.Marshal(context)
 	if err != nil {
 		return fmt.Errorf("failed to marshal context: %w", err)
@@ -200,7 +200,7 @@ func (m *Manager) DeleteContext(name string) error {
 	}
 
 	contextDir := m.GetContextDir(name)
-	
+
 	if _, err := os.Stat(contextDir); os.IsNotExist(err) {
 		return fmt.Errorf("context '%s' not found", name)
 	}
@@ -259,10 +259,10 @@ func (m *Manager) ValidateContextName(name string) error {
 
 	// Check for valid characters (alphanumeric, dash, underscore)
 	for _, char := range name {
-		if !((char >= 'a' && char <= 'z') || 
-			 (char >= 'A' && char <= 'Z') || 
-			 (char >= '0' && char <= '9') || 
-			 char == '-' || char == '_') {
+		if !((char >= 'a' && char <= 'z') ||
+			(char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') ||
+			char == '-' || char == '_') {
 			return fmt.Errorf("context name can only contain letters, numbers, hyphens, and underscores")
 		}
 	}
@@ -281,7 +281,7 @@ func (m *Manager) GetContextCollections(name string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return ctx.PocketBase.AvailableCollections, nil
 }
 
@@ -291,11 +291,11 @@ func (m *Manager) AddContextCollection(contextName, collection string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if err := ctx.AddCollection(collection); err != nil {
 		return err
 	}
-	
+
 	return m.SaveContext(ctx)
 }
 
@@ -305,11 +305,11 @@ func (m *Manager) RemoveContextCollection(contextName, collection string) error 
 	if err != nil {
 		return err
 	}
-	
+
 	if err := ctx.RemoveCollection(collection); err != nil {
 		return err
 	}
-	
+
 	return m.SaveContext(ctx)
 }
 
@@ -319,9 +319,9 @@ func (m *Manager) ClearContextCollections(contextName string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	ctx.PocketBase.AvailableCollections = []string{}
-	
+
 	return m.SaveContext(ctx)
 }
 

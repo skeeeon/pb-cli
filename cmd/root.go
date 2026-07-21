@@ -20,9 +20,9 @@ var (
 	configManager *config.Manager
 
 	// Global flags
-	globalOutputFormat string
+	globalOutputFormat  string
 	globalColorsEnabled bool
-	globalDebug bool
+	globalDebug         bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -127,13 +127,13 @@ func init() {
 func addCommands() {
 	// Context management commands
 	rootCmd.AddCommand(context.ContextCmd)
-	
+
 	// Authentication commands
 	rootCmd.AddCommand(auth.AuthCmd)
-	
+
 	// Backup management commands
 	rootCmd.AddCommand(backup.BackupCmd)
-	
+
 	// Collections CRUD commands
 	rootCmd.AddCommand(collections.CollectionsCmd)
 }
@@ -143,7 +143,7 @@ func initConfig() {
 	// Set config file type
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
-	
+
 	// Look for config in XDG config directory
 	if configManager != nil {
 		viper.AddConfigPath(configManager.GetConfigDir())

@@ -34,7 +34,7 @@ Examples:
 			// Try to provide helpful suggestions
 			contexts, listErr := configManager.ListContexts()
 			if listErr == nil && len(contexts) > 0 {
-				return fmt.Errorf("context '%s' not found. Available contexts: %v", 
+				return fmt.Errorf("context '%s' not found. Available contexts: %v",
 					contextName, contexts)
 			}
 			return fmt.Errorf("context '%s' not found", contextName)
@@ -48,8 +48,8 @@ Examples:
 		// Success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
-		fmt.Printf("%s Context switched to '%s'\n", 
+
+		fmt.Printf("%s Context switched to '%s'\n",
 			green("✓"), cyan(contextName))
 
 		// Show context details
@@ -58,36 +58,36 @@ Examples:
 		fmt.Printf("  Directory: %s\n", contextDir)
 		fmt.Printf("  PocketBase URL: %s\n", ctx.PocketBase.URL)
 		fmt.Printf("  Auth Collection: %s\n", ctx.PocketBase.AuthCollection)
-		
+
 		if len(ctx.PocketBase.AvailableCollections) > 0 {
 			fmt.Printf("  Collections: %v\n", ctx.PocketBase.AvailableCollections)
 		} else {
-			fmt.Printf("  Collections: %s\n", 
+			fmt.Printf("  Collections: %s\n",
 				color.New(color.FgYellow).Sprint("None configured"))
 		}
 
 		// Authentication status
 		if ctx.PocketBase.AuthToken != "" {
 			if ctx.PocketBase.AuthExpires != nil {
-				fmt.Printf("  Authentication: %s (expires %s)\n", 
-					green("Valid"), 
+				fmt.Printf("  Authentication: %s (expires %s)\n",
+					green("Valid"),
 					ctx.PocketBase.AuthExpires.Format("2006-01-02 15:04"))
 			} else {
 				fmt.Printf("  Authentication: %s\n", green("Valid"))
 			}
 		} else {
-			fmt.Printf("  Authentication: %s\n", 
+			fmt.Printf("  Authentication: %s\n",
 				color.New(color.FgYellow).Sprint("Required"))
-			
+
 			// Suggest authentication
 			fmt.Printf("\nNext steps:\n")
-			fmt.Printf("  Authenticate with PocketBase: %s\n", 
+			fmt.Printf("  Authenticate with PocketBase: %s\n",
 				color.New(color.FgCyan).Sprint("pb auth"))
 		}
 
 		// Show collection management suggestions if no collections
 		if len(ctx.PocketBase.AvailableCollections) == 0 {
-			fmt.Printf("  Configure collections: %s\n", 
+			fmt.Printf("  Configure collections: %s\n",
 				color.New(color.FgCyan).Sprint("pb context collections add <collection_names>"))
 		}
 

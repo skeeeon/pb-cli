@@ -50,7 +50,7 @@ Examples:
 
 		if len(backups) == 0 {
 			fmt.Println("No backups found.")
-			fmt.Printf("\nCreate your first backup with: %s\n", 
+			fmt.Printf("\nCreate your first backup with: %s\n",
 				color.New(color.FgCyan).Sprint("pb backup create"))
 			return nil
 		}
@@ -84,7 +84,7 @@ func displayBackupsTable(backups pocketbase.BackupsList, ctx *config.Context) er
 
 	for _, backup := range backups {
 		age := utils.FormatTimeAgo(backup.Modified.Time)
-		
+
 		table.Append([]string{
 			backup.Key,
 			backup.GetHumanSize(),
@@ -100,14 +100,14 @@ func displayBackupsTable(backups pocketbase.BackupsList, ctx *config.Context) er
 	fmt.Printf("\nUseful commands:\n")
 	if len(backups) > 0 {
 		firstBackup := backups[0].Key
-		fmt.Printf("  Download backup: %s\n", 
+		fmt.Printf("  Download backup: %s\n",
 			color.New(color.FgCyan).Sprintf("pb backup download %s", firstBackup))
-		fmt.Printf("  Restore from backup: %s\n", 
+		fmt.Printf("  Restore from backup: %s\n",
 			color.New(color.FgCyan).Sprintf("pb backup restore %s", firstBackup))
-		fmt.Printf("  Delete backup: %s\n", 
+		fmt.Printf("  Delete backup: %s\n",
 			color.New(color.FgCyan).Sprintf("pb backup delete %s", firstBackup))
 	}
-	fmt.Printf("  Create new backup: %s\n", 
+	fmt.Printf("  Create new backup: %s\n",
 		color.New(color.FgCyan).Sprint("pb backup create"))
 
 	return nil

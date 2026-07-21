@@ -64,7 +64,7 @@ Examples:
 
 		// Delete the backup
 		utils.PrintInfo(fmt.Sprintf("Deleting backup '%s'...", backupName))
-		
+
 		err = client.DeleteBackup(backupName)
 		if err != nil {
 			if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
@@ -80,7 +80,7 @@ Examples:
 		// Display success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
+
 		fmt.Printf("%s Backup deleted successfully!\n", green("✓"))
 		fmt.Printf("  Backup: %s\n", backup.Key)
 		fmt.Printf("  Size freed: %s\n", backup.GetHumanSize())
@@ -88,9 +88,9 @@ Examples:
 
 		// Show next steps
 		fmt.Printf("\nNext steps:\n")
-		fmt.Printf("  List remaining backups: %s\n", 
+		fmt.Printf("  List remaining backups: %s\n",
 			cyan("pb backup list"))
-		fmt.Printf("  Create new backup: %s\n", 
+		fmt.Printf("  Create new backup: %s\n",
 			cyan("pb backup create"))
 
 		return nil

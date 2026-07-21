@@ -86,12 +86,12 @@ Examples:
 		yellow := color.New(color.FgYellow).SprintFunc()
 
 		if len(added) > 0 {
-			fmt.Printf("%s Added collections: %s\n", 
+			fmt.Printf("%s Added collections: %s\n",
 				green("✓"), strings.Join(added, ", "))
 		}
 
 		if len(skipped) > 0 {
-			fmt.Printf("%s Already configured: %s\n", 
+			fmt.Printf("%s Already configured: %s\n",
 				yellow("ℹ"), strings.Join(skipped, ", "))
 		}
 
@@ -102,7 +102,7 @@ Examples:
 		if len(added) > 0 {
 			fmt.Printf("\nYou can now use these collections with:\n")
 			for _, collection := range added {
-				fmt.Printf("  %s\n", 
+				fmt.Printf("  %s\n",
 					color.New(color.FgCyan).Sprintf("pb collections list %s", collection))
 			}
 		}
@@ -195,7 +195,7 @@ Examples:
 
 		if len(collections) == 0 {
 			fmt.Printf("No collections configured for context '%s'.\n", ctx.Name)
-			fmt.Printf("\nAdd collections with:\n  %s\n", 
+			fmt.Printf("\nAdd collections with:\n  %s\n",
 				color.New(color.FgCyan).Sprint("pb context collections add <collection_names>"))
 			return nil
 		}
@@ -209,7 +209,7 @@ Examples:
 
 		fmt.Printf("\nUsage examples:\n")
 		for _, collection := range collections[:min(3, len(collections))] {
-			fmt.Printf("  %s\n", 
+			fmt.Printf("  %s\n",
 				color.New(color.FgCyan).Sprintf("pb collections list %s", collection))
 		}
 
@@ -253,10 +253,10 @@ Examples:
 
 		// Report success
 		green := color.New(color.FgGreen).SprintFunc()
-		fmt.Printf("%s Cleared all collections from context '%s'\n", 
+		fmt.Printf("%s Cleared all collections from context '%s'\n",
 			green("✓"), ctx.Name)
 
-		fmt.Printf("\nAdd collections with:\n  %s\n", 
+		fmt.Printf("\nAdd collections with:\n  %s\n",
 			color.New(color.FgCyan).Sprint("pb context collections add <collection_names>"))
 
 		return nil
