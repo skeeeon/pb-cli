@@ -19,8 +19,9 @@ func NewManager() (*Manager, error) {
 	// Create XDG-compliant config directory
 	configDir := filepath.Join(xdg.ConfigHome, "pb")
 
-	// Ensure main config directory exists
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	// Ensure main config directory exists. 0700 because context files below it
+	// hold plaintext auth tokens.
+	if err := os.MkdirAll(configDir, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -57,7 +58,7 @@ func (m *Manager) GetBackupDir(name string) string {
 // EnsureBackupDir creates the backup directory for a context if it doesn't exist
 func (m *Manager) EnsureBackupDir(name string) error {
 	backupDir := m.GetBackupDir(name)
-	return os.MkdirAll(backupDir, 0755)
+	return os.MkdirAll(backupDir, 0700)
 }
 
 // LoadGlobalConfig loads the global configuration
@@ -142,7 +143,7 @@ func (m *Manager) SaveContext(context *Context) error {
 
 	// Create context directory if it doesn't exist
 	contextDir := m.GetContextDir(context.Name)
-	if err := os.MkdirAll(contextDir, 0755); err != nil {
+	if err := os.MkdirAll(contextDir, 0700); err != nil {
 		return fmt.Errorf("failed to create context directory: %w", err)
 	}
 
@@ -159,7 +160,8 @@ func (m *Manager) SaveContext(context *Context) error {
 		return fmt.Errorf("failed to marshal context: %w", err)
 	}
 
-	if err := os.WriteFile(contextPath, data, 0644); err != nil {
+	// 0600: the context file contains the plaintext auth token.
+	if err := os.WriteFile(contextPath, data, 0600); err != nil {
 		return fmt.Errorf("failed to write context file: %w", err)
 	}
 
@@ -327,7 +329,7 @@ func (m *Manager) ClearContextCollections(contextName string) error {
 // This is primarily used for testing.
 func NewManagerWithBase(baseDir string) (*Manager, error) {
 	// Ensure the base config directory exists
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
+	if err := os.MkdirAll(baseDir, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create base directory: %w", err)
 	}
 

@@ -52,8 +52,9 @@ func init() {
 	BackupCmd.AddCommand(deleteCmd)
 	BackupCmd.AddCommand(restoreCmd)
 
-	// Global flags
-	BackupCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "table", "Output format (json|yaml|table)")
+	// Global flags. Output defaults to empty so it falls back to the global
+	// (or root --output) format; pass -o table for the human-readable view.
+	BackupCmd.PersistentFlags().StringVarP(&outputFlag, "output", "o", "", "Output format (json|yaml|table)")
 	BackupCmd.PersistentFlags().BoolVarP(&forceFlag, "force", "f", false, "Skip confirmation prompts")
 }
 
@@ -62,15 +63,18 @@ func SetConfigManager(cm *config.Manager) {
 	configManager = cm
 }
 
+// getOutputFormat returns the effective output format for backup commands.
+func getOutputFormat() string {
+	if outputFlag != "" {
+		return outputFlag
+	}
+	return config.Global.OutputFormat
+}
+
 // validateConfigManager ensures the config manager is available
 func validateConfigManager() error {
 	if configManager == nil {
-		// Try to initialize it if it's not set (fallback)
-		var err error
-		configManager, err = config.NewManager()
-		if err != nil {
-			return fmt.Errorf("failed to initialize configuration manager: %w", err)
-		}
+		return fmt.Errorf("configuration manager not initialized")
 	}
 	return nil
 }
@@ -83,7 +87,7 @@ func validateActiveContext() (*config.Context, error) {
 
 	ctx, err := configManager.GetActiveContext()
 	if err != nil {
-		return nil, fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+		return nil, fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 	}
 
 	// Check authentication

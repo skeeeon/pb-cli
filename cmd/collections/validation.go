@@ -123,20 +123,6 @@ func validateRecordID(recordID string) error {
 	return nil
 }
 
-// validateCollectionName validates a collection name format
-func validateCollectionName(collection string) error {
-	if collection == "" {
-		return fmt.Errorf("collection name cannot be empty")
-	}
-	
-	// Basic validation - PocketBase will handle detailed collection validation
-	if len(collection) < 1 || len(collection) > 50 {
-		return fmt.Errorf("collection name must be between 1 and 50 characters")
-	}
-	
-	return nil
-}
-
 // validateCollectionInContext checks if a collection is available in the given context
 // and returns a helpful error message if not
 func validateCollectionInContext(collection string, ctx *config.Context) error {
@@ -192,9 +178,5 @@ func provideSuggestions(collection string, action string, err error) string {
 
 // contains checks if a string contains a substring (case-insensitive)
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || 
-		len(s) > len(substr) && (
-			s[:len(substr)] == substr || 
-			s[len(s)-len(substr):] == substr ||
-			strings.Contains(strings.ToLower(s), strings.ToLower(substr))))
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }

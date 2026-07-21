@@ -15,7 +15,7 @@ import (
 var showOutputFormat string
 
 var showCmd = &cobra.Command{
-	Use:   "show [n]",
+	Use:   "show [name]",
 	Short: "Show detailed context configuration",
 	Long: `Display detailed configuration for a specific context or the active context.
 
@@ -44,7 +44,7 @@ Examples:
 			// Show active context
 			ctx, err = configManager.GetActiveContext()
 			if err != nil {
-				return fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+				return fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 			}
 			contextName = ctx.Name
 		} else {
@@ -76,8 +76,12 @@ Examples:
 			displayCtx.PocketBase.AuthToken = "***HIDDEN***"
 		}
 
-		// Output based on format
-		switch strings.ToLower(showOutputFormat) {
+		// Output based on the effective format (falls back to the global default).
+		format := showOutputFormat
+		if format == "" {
+			format = config.Global.OutputFormat
+		}
+		switch strings.ToLower(format) {
 		case "json":
 			output, err := json.MarshalIndent(displayCtx, "", "  ")
 			if err != nil {
@@ -98,7 +102,7 @@ Examples:
 
 		default:
 			return fmt.Errorf("invalid output format '%s'. Valid formats: json, yaml, table",
-				showOutputFormat)
+				format)
 		}
 
 		return nil
@@ -198,6 +202,6 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 }
 
 func init() {
-	showCmd.Flags().StringVarP(&showOutputFormat, "output", "o", "table",
-		"Output format (table|json|yaml)")
+	showCmd.Flags().StringVarP(&showOutputFormat, "output", "o", "",
+		"Output format (json|yaml|table)")
 }

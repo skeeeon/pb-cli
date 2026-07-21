@@ -14,6 +14,12 @@ import (
 	"pb-cli/internal/utils"
 )
 
+const (
+	userAgent = "pb-cli/0.1.0"
+	// apiTimeout bounds ordinary API calls so a dead server fails fast.
+	apiTimeout = 30 * time.Second
+)
+
 // Client represents a PocketBase HTTP client
 type Client struct {
 	httpClient *resty.Client
@@ -30,14 +36,14 @@ type FileTokenResponse struct {
 // NewClient creates a new PocketBase client
 func NewClient(baseURL string) *Client {
 	client := resty.New()
-	
+
 	// Set common headers
 	client.SetHeader("Content-Type", "application/json")
-	client.SetHeader("User-Agent", "pb-cli/0.1.0")
-	
+	client.SetHeader("User-Agent", userAgent)
+
 	// Set timeout
-	client.SetTimeout(30 * time.Second)
-	
+	client.SetTimeout(apiTimeout)
+
 	// Enable debug mode if configured
 	if config.Global.Debug {
 		client.SetDebug(true)
@@ -47,6 +53,23 @@ func NewClient(baseURL string) *Client {
 		httpClient: client,
 		baseURL:    baseURL,
 	}
+}
+
+// newTransferClient builds a resty client with no timeout for long-running
+// backup operations (create/restore/upload/download). These can far exceed the
+// apiTimeout on large databases, so they must not inherit the 30s API cap.
+func (c *Client) newTransferClient() *resty.Client {
+	client := resty.New()
+	client.SetHeader("Content-Type", "application/json")
+	client.SetHeader("User-Agent", userAgent)
+	if c.authToken != "" {
+		client.SetAuthToken(c.authToken)
+	}
+	if config.Global.Debug {
+		client.SetDebug(true)
+	}
+	// Intentionally no timeout: transfers are bounded by the connection/server.
+	return client
 }
 
 // NewClientFromContext creates a PocketBase client from a context configuration
@@ -83,39 +106,44 @@ func (c *Client) IsAuthenticated() bool {
 	return c.authToken != ""
 }
 
-// makeRequest performs an HTTP request with error handling
+// makeRequest performs an HTTP request on the default (timeout-bounded) client.
 func (c *Client) makeRequest(method, endpoint string, body interface{}) (*resty.Response, error) {
+	return c.doRequest(c.httpClient, method, endpoint, body)
+}
+
+// doRequest performs an HTTP request on the given client with shared error handling.
+func (c *Client) doRequest(client *resty.Client, method, endpoint string, body interface{}) (*resty.Response, error) {
 	url := fmt.Sprintf("%s/api/%s", c.baseURL, endpoint)
-	
+
 	utils.PrintDebug(fmt.Sprintf("Making %s request to %s", method, url))
-	
+
 	var resp *resty.Response
 	var err error
-	
+
 	switch method {
 	case "GET":
-		resp, err = c.httpClient.R().Get(url)
+		resp, err = client.R().Get(url)
 	case "POST":
-		resp, err = c.httpClient.R().SetBody(body).Post(url)
+		resp, err = client.R().SetBody(body).Post(url)
 	case "PATCH":
-		resp, err = c.httpClient.R().SetBody(body).Patch(url)
+		resp, err = client.R().SetBody(body).Patch(url)
 	case "DELETE":
-		resp, err = c.httpClient.R().Delete(url)
+		resp, err = client.R().Delete(url)
 	default:
 		return nil, fmt.Errorf("unsupported HTTP method: %s", method)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
-	
+
 	utils.PrintDebug(fmt.Sprintf("Response status: %d", resp.StatusCode()))
-	
+
 	// Handle HTTP errors
 	if resp.StatusCode() >= 400 {
 		return resp, NewPocketBaseError(resp)
 	}
-	
+
 	return resp, nil
 }
 
@@ -137,8 +165,12 @@ func (c *Client) GetFileToken() (string, error) {
 		return "", fmt.Errorf("failed to parse file token response: %w", err)
 	}
 
-	utils.PrintDebug(fmt.Sprintf("Received file token: %s...", tokenResp.Token[:10]))
-	
+	preview := tokenResp.Token
+	if len(preview) > 10 {
+		preview = preview[:10]
+	}
+	utils.PrintDebug(fmt.Sprintf("Received file token: %s...", preview))
+
 	return tokenResp.Token, nil
 }
 
@@ -151,48 +183,6 @@ func (c *Client) GetHealth() error {
 	
 	if resp.StatusCode() != 200 {
 		return fmt.Errorf("server returned status %d", resp.StatusCode())
-	}
-	
-	return nil
-}
-
-// GetCollections returns available collections from PocketBase
-func (c *Client) GetCollections() ([]Collection, error) {
-	resp, err := c.makeRequest("GET", "collections", nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get collections: %w", err)
-	}
-	
-	var result struct {
-		Items []Collection `json:"items"`
-	}
-	
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse collections response: %w", err)
-	}
-	
-	return result.Items, nil
-}
-
-// ValidateCollection checks if a collection exists and is accessible
-func (c *Client) ValidateCollection(collection string) error {
-	if !c.IsAuthenticated() {
-		return fmt.Errorf("authentication required")
-	}
-
-	// Try to get collection info (this will fail if collection doesn't exist or isn't accessible)
-	endpoint := fmt.Sprintf("collections/%s", collection)
-	_, err := c.makeRequest("GET", endpoint, nil)
-	if err != nil {
-		if pbErr, ok := err.(*PocketBaseError); ok {
-			if pbErr.StatusCode == 404 {
-				return fmt.Errorf("collection '%s' not found", collection)
-			}
-			if pbErr.StatusCode == 403 {
-				return fmt.Errorf("access denied to collection '%s'", collection)
-			}
-		}
-		return fmt.Errorf("failed to validate collection '%s': %w", collection, err)
 	}
 	
 	return nil
@@ -341,37 +331,6 @@ func (c *Client) DeleteRecord(collection, id string) error {
 	return nil
 }
 
-// GetCollectionSchema returns the schema for a collection
-func (c *Client) GetCollectionSchema(collection string) (*Collection, error) {
-	if !c.IsAuthenticated() {
-		return nil, fmt.Errorf("authentication required")
-	}
-	
-	endpoint := fmt.Sprintf("collections/%s", collection)
-	
-	resp, err := c.makeRequest("GET", endpoint, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get collection schema: %w", err)
-	}
-	
-	var result Collection
-	if err := json.Unmarshal(resp.Body(), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse collection schema response: %w", err)
-	}
-	
-	return &result, nil
-}
-
-// CollectionExists checks if a collection exists (without requiring auth for the actual collection)
-func (c *Client) CollectionExists(collection string) bool {
-	if !c.IsAuthenticated() {
-		return false
-	}
-	
-	err := c.ValidateCollection(collection)
-	return err == nil
-}
-
 // Backup Management Methods
 
 // ListBackups retrieves all available backups
@@ -411,7 +370,9 @@ func (c *Client) CreateBackup(name string) (*Backup, error) {
 		}
 	}
 
-	resp, err := c.makeRequest("POST", "backups", requestData)
+	// Backup creation can take a long time on large databases; use a client
+	// without the API timeout.
+	resp, err := c.doRequest(c.newTransferClient(), "POST", "backups", requestData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create backup: %w", err)
 	}
@@ -477,75 +438,6 @@ func (c *Client) GetBackup(backupKey string) (*Backup, error) {
 	return nil, fmt.Errorf("backup '%s' not found", backupKey)
 }
 
-// DownloadBackup downloads a backup file to the specified path using file token authentication
-func (c *Client) DownloadBackup(backupKey, outputPath string) error {
-	if !c.IsAuthenticated() {
-		return fmt.Errorf("authentication required")
-	}
-
-	utils.PrintDebug(fmt.Sprintf("Downloading backup %s to %s", backupKey, outputPath))
-
-	// Step 1: Get file access token
-	utils.PrintDebug("Requesting file access token...")
-	fileToken, err := c.GetFileToken()
-	if err != nil {
-		return fmt.Errorf("failed to get file access token: %w", err)
-	}
-
-	// Step 2: Create the output directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
-
-	// Step 3: Create output file
-	outFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("failed to create output file: %w", err)
-	}
-	defer outFile.Close()
-
-	// Step 4: Download using file token
-	url := fmt.Sprintf("%s/api/backups/%s", c.baseURL, backupKey)
-	
-	utils.PrintDebug(fmt.Sprintf("Downloading from URL: %s", url))
-	
-	// Create a fresh client without auth headers but with file token as query param
-	downloadClient := resty.New()
-	downloadClient.SetTimeout(30 * time.Second)
-	downloadClient.SetHeader("User-Agent", "pb-cli/0.1.0")
-	
-	resp, err := downloadClient.R().
-		SetQueryParam("token", fileToken).
-		SetDoNotParseResponse(true).
-		Get(url)
-	
-	if err != nil {
-		return fmt.Errorf("failed to download backup: %w", err)
-	}
-	defer resp.RawBody().Close()
-
-	if resp.StatusCode() >= 400 {
-		return fmt.Errorf("download failed with status %d: %s", resp.StatusCode(), resp.Status())
-	}
-
-	utils.PrintDebug(fmt.Sprintf("Download response status: %d", resp.StatusCode()))
-	utils.PrintDebug(fmt.Sprintf("Content-Length: %s", resp.Header().Get("Content-Length")))
-
-	// Step 5: Copy response body to file
-	written, err := io.Copy(outFile, resp.RawBody())
-	if err != nil {
-		return fmt.Errorf("failed to save backup file: %w", err)
-	}
-
-	utils.PrintDebug(fmt.Sprintf("Downloaded %d bytes to: %s", written, outputPath))
-	
-	if written == 0 {
-		return fmt.Errorf("downloaded file is empty")
-	}
-
-	return nil
-}
-
 // DownloadBackupWithProgress downloads a backup with progress reporting using file token authentication
 func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progressCallback func(downloaded, total int64)) error {
 	if !c.IsAuthenticated() {
@@ -584,11 +476,11 @@ func (c *Client) DownloadBackupWithProgress(backupKey, outputPath string, progre
 	
 	utils.PrintDebug(fmt.Sprintf("Downloading from URL: %s", url))
 	
-	// Create a fresh client without auth headers but with file token as query param
+	// Create a fresh client without auth headers but with file token as query param.
+	// No timeout: large backups can take a long time to stream.
 	downloadClient := resty.New()
-	downloadClient.SetTimeout(30 * time.Second)
-	downloadClient.SetHeader("User-Agent", "pb-cli/0.1.0")
-	
+	downloadClient.SetHeader("User-Agent", userAgent)
+
 	resp, err := downloadClient.R().
 		SetQueryParam("token", fileToken).
 		SetDoNotParseResponse(true).
@@ -652,10 +544,11 @@ func (c *Client) UploadBackup(filePath, backupName string, progressCallback func
 	
 	utils.PrintDebug(fmt.Sprintf("Upload URL: %s", url))
 	
-	// Upload using authenticated client with POST to /api/backups/upload
-	resp, err := c.httpClient.R().
-		SetFile("file", filePath).  // Use "file" field name as per API docs
-		Post(url)                   // Use POST method as per API docs
+	// Upload using authenticated client without the API timeout, since large
+	// backups can take a long time to transfer.
+	resp, err := c.newTransferClient().R().
+		SetFile("file", filePath). // Use "file" field name as per API docs
+		Post(url)                  // Use POST method as per API docs
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload backup: %w", err)
@@ -731,7 +624,9 @@ func (c *Client) RestoreBackup(backupKey string) error {
 	utils.PrintDebug(fmt.Sprintf("Restoring from backup: %s", backupKey))
 
 	endpoint := fmt.Sprintf("backups/%s/restore", backupKey)
-	_, err := c.makeRequest("POST", endpoint, nil)
+	// Restore restarts PocketBase and can take minutes; use a client without
+	// the API timeout.
+	_, err := c.doRequest(c.newTransferClient(), "POST", endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}

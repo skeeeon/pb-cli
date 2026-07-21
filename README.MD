@@ -56,7 +56,13 @@ pb auth --collection _superusers
 
 # Authenticate with custom credentials
 pb auth --email admin@example.com --password mypassword
+
+# Check status or clear the stored token
+pb auth status    # or: pb auth whoami
+pb auth logout
 ```
+
+The session token is stored in the context file with `0600` (owner-only) permissions.
 
 ### 4. Manage Collections
 
@@ -147,6 +153,28 @@ pb auth --collection _superusers   # Required for backup operations
 
 # Authenticate with custom collection
 pb auth --collection customers
+
+# Show auth status for the active context / clear the stored token
+pb auth status
+pb auth logout
+```
+
+#### Non-interactive / CI authentication
+
+Credentials are resolved in this order:
+
+- **email**: `--email` flag → `PB_EMAIL` env → interactive prompt
+- **password**: `--password` flag → `--password-stdin` → `PB_PASSWORD` env → interactive prompt
+
+Prefer the env var or `--password-stdin` in scripts so the password never lands in
+argv or shell history:
+
+```bash
+# Via environment variables
+PB_EMAIL=ci@example.com PB_PASSWORD=secret pb auth
+
+# Via stdin
+echo "$PB_PASSWORD" | pb auth --email ci@example.com --password-stdin
 ```
 
 ### Collections CRUD
@@ -321,6 +349,12 @@ pb collections list posts --output table
 # Set global default
 pb --output table collections list posts
 ```
+
+The output format is resolved consistently for every command: the command's
+`--output/-o` flag, otherwise the global `output_format` (default `json`).
+This applies to `backup list` and `context show` too — pass `-o table` (or set
+`output_format: table` in the global config) if you prefer their table view by
+default.
 
 ### Creating Records with Files
 

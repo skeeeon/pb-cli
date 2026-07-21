@@ -8,7 +8,7 @@ import (
 )
 
 var selectCmd = &cobra.Command{
-	Use:   "select <n>",
+	Use:   "select <name>",
 	Short: "Set the active PocketBase context",
 	Long: `Set the active context for PocketBase operations.
 

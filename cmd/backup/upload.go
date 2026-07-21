@@ -125,5 +125,5 @@ Examples:
 }
 
 func init() {
-	uploadCmd.Flags().StringVar(&nameFlag, "name", "", "Custom backup name (PocketBase will use filename if not specified)")
+	uploadCmd.Flags().StringVarP(&nameFlag, "name", "n", "", "Custom backup name (PocketBase will use filename if not specified)")
 }

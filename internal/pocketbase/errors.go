@@ -223,7 +223,7 @@ func (e *PocketBaseError) getFieldValidationMessage(field, code, message string)
 
 	fieldDisplay := fieldDisplayNames[field]
 	if fieldDisplay == "" {
-		fieldDisplay = strings.Title(strings.ReplaceAll(field, "_", " "))
+		fieldDisplay = titleWords(strings.ReplaceAll(field, "_", " "))
 	}
 
 	// Handle specific validation codes
@@ -246,6 +246,16 @@ func (e *PocketBaseError) getFieldValidationMessage(field, code, message string)
 		// Use the original message if we don't have a specific handler
 		return fmt.Sprintf("%s: %s", fieldDisplay, message)
 	}
+}
+
+// titleWords capitalizes the first letter of each space-separated word.
+// Replaces the deprecated strings.Title for our simple field-name use.
+func titleWords(s string) string {
+	words := strings.Fields(s)
+	for i, w := range words {
+		words[i] = strings.ToUpper(w[:1]) + w[1:]
+	}
+	return strings.Join(words, " ")
 }
 
 // IsAuthenticationError checks if the error is related to authentication

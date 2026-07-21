@@ -262,30 +262,6 @@ func PrintDebug(message string) {
 	fmt.Fprintf(os.Stderr, "%s %s\n", gray("Debug:"), message)
 }
 
-// TruncateString truncates a string to the specified length with ellipsis
-func TruncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return s[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
-}
-
-// FormatDuration formats a duration string in a human-readable way
-func FormatDuration(seconds int64) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%ds", seconds)
-	}
-	if seconds < 3600 {
-		return fmt.Sprintf("%dm %ds", seconds/60, seconds%60)
-	}
-	hours := seconds / 3600
-	minutes := (seconds % 3600) / 60
-	return fmt.Sprintf("%dh %dm", hours, minutes)
-}
-
 // TitleCase converts a string to title case (first letter uppercase)
 func TitleCase(s string) string {
 	if s == "" {
@@ -346,24 +322,4 @@ func FormatBytes(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
-
-// ToJSON converts data to JSON bytes
-func ToJSON(data interface{}) ([]byte, error) {
-	return json.Marshal(data)
-}
-
-// FormatJSON formats JSON bytes for pretty printing
-func FormatJSON(data []byte) (string, error) {
-	var obj interface{}
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return "", err
-	}
-	
-	formatted, err := json.MarshalIndent(obj, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	
-	return string(formatted), nil
 }

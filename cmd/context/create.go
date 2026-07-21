@@ -8,6 +8,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"pb-cli/internal/config"
+	"pb-cli/internal/utils"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 )
 
 var createCmd = &cobra.Command{
-	Use:   "create <n>",
+	Use:   "create <name>",
 	Short: "Create a new PocketBase context",
 	Long: `Create a new context configuration for a PocketBase environment.
 
@@ -52,6 +53,9 @@ Examples:
 		// Validate required flags
 		if pbURL == "" {
 			return fmt.Errorf("--url is required")
+		}
+		if err := utils.ValidatePocketBaseURL(pbURL); err != nil {
+			return fmt.Errorf("invalid --url: %w", err)
 		}
 
 		// Validate auth collection

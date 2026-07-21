@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	pbEmail      string
-	pbPassword   string
-	pbCollection string
+	pbEmail         string
+	pbPassword      string
+	pbCollection    string
+	pbPasswordStdin bool
 )
 
 // AuthCmd represents the auth command
@@ -39,6 +40,10 @@ The authentication will:
   2. Store the session token securely in your context
   3. Enable access to collections and operations
 
+Credentials are resolved in this order:
+  email:    --email flag  > PB_EMAIL env    > interactive prompt
+  password: --password    > --password-stdin > PB_PASSWORD env > interactive prompt
+
 Examples:
   # Interactive authentication (prompts for credentials)
   pb auth
@@ -46,11 +51,16 @@ Examples:
   # Authenticate with specific credentials
   pb auth --email user@example.com --password mypassword
 
+  # Non-interactive / CI (no password in argv or shell history)
+  PB_EMAIL=ci@example.com PB_PASSWORD=secret pb auth
+  echo "$PB_PASSWORD" | pb auth --email ci@example.com --password-stdin
+
   # Authenticate against admin collection
   pb auth --collection admins --email admin@example.com
 
-  # Authenticate against custom collection
-  pb auth --collection customers --email customer@example.com`,
+  # Check status or clear the stored token
+  pb auth status
+  pb auth logout`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx, err := validateActiveContext()
 		if err != nil {
@@ -71,7 +81,10 @@ Examples:
 			return err
 		}
 
-		// Get credentials if not provided
+		// Resolve email: --email flag > PB_EMAIL env > interactive prompt.
+		if pbEmail == "" {
+			pbEmail = os.Getenv("PB_EMAIL")
+		}
 		if pbEmail == "" {
 			pbEmail, err = promptForEmail()
 			if err != nil {
@@ -79,6 +92,18 @@ Examples:
 			}
 		}
 
+		// Resolve password: --password flag > --password-stdin > PB_PASSWORD env >
+		// interactive prompt. This lets CI authenticate without a TTY and without
+		// leaking the password into argv/shell history.
+		if pbPassword == "" && pbPasswordStdin {
+			pbPassword, err = readPasswordStdin()
+			if err != nil {
+				return fmt.Errorf("failed to read password from stdin: %w", err)
+			}
+		}
+		if pbPassword == "" {
+			pbPassword = os.Getenv("PB_PASSWORD")
+		}
 		if pbPassword == "" {
 			pbPassword, err = promptForPassword()
 			if err != nil {
@@ -173,9 +198,13 @@ Examples:
 var configManager *config.Manager
 
 func init() {
-	AuthCmd.Flags().StringVarP(&pbEmail, "email", "e", "", "Email address for authentication")
-	AuthCmd.Flags().StringVarP(&pbPassword, "password", "p", "", "Password for authentication (will prompt if not provided)")
+	AuthCmd.Flags().StringVarP(&pbEmail, "email", "e", "", "Email address (or set PB_EMAIL; prompts if unset)")
+	AuthCmd.Flags().StringVarP(&pbPassword, "password", "p", "", "Password (insecure in shell history; prefer --password-stdin or PB_PASSWORD)")
+	AuthCmd.Flags().BoolVar(&pbPasswordStdin, "password-stdin", false, "Read the password from stdin (for non-interactive/CI use)")
 	AuthCmd.Flags().StringVarP(&pbCollection, "collection", "c", "", "Authentication collection (defaults to context setting or 'users')")
+
+	AuthCmd.AddCommand(logoutCmd)
+	AuthCmd.AddCommand(statusCmd)
 }
 
 // SetConfigManager sets the configuration manager for the auth commands
@@ -227,6 +256,91 @@ func promptForPassword() (string, error) {
 
 	fmt.Println()
 	return string(passwordBytes), nil
+}
+
+// readPasswordStdin reads a single line (the password) from stdin.
+func readPasswordStdin() (string, error) {
+	scanner := bufio.NewScanner(os.Stdin)
+	if scanner.Scan() {
+		return scanner.Text(), nil
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	return "", fmt.Errorf("no password provided on stdin")
+}
+
+// logoutCmd clears the stored auth token for the active context.
+var logoutCmd = &cobra.Command{
+	Use:   "logout",
+	Short: "Clear the stored auth token for the active context",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, err := validateActiveContext()
+		if err != nil {
+			return err
+		}
+
+		if ctx.PocketBase.AuthToken == "" {
+			utils.PrintInfo(fmt.Sprintf("Context '%s' is already logged out.", ctx.Name))
+			return nil
+		}
+
+		ctx.PocketBase.AuthToken = ""
+		ctx.PocketBase.AuthExpires = nil
+		ctx.PocketBase.AuthRecord = nil
+
+		if err := configManager.SaveContext(ctx); err != nil {
+			return fmt.Errorf("failed to clear stored auth: %w", err)
+		}
+
+		utils.PrintSuccess(fmt.Sprintf("Logged out of context '%s'.", ctx.Name))
+		return nil
+	},
+}
+
+// statusCmd reports the authentication state for the active context.
+var statusCmd = &cobra.Command{
+	Use:     "status",
+	Aliases: []string{"whoami"},
+	Short:   "Show authentication status for the active context",
+	Args:    cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx, err := validateActiveContext()
+		if err != nil {
+			return err
+		}
+
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Printf("Context:    %s\n", cyan(ctx.Name))
+		fmt.Printf("URL:        %s\n", ctx.PocketBase.URL)
+
+		if ctx.PocketBase.AuthToken == "" {
+			fmt.Printf("Status:     not authenticated (run 'pb auth')\n")
+			return nil
+		}
+
+		collection := ctx.PocketBase.AuthCollection
+		if collection == "" {
+			collection = config.AuthCollectionUsers
+		}
+		fmt.Printf("Collection: %s\n", pocketbase.GetCollectionDisplayName(collection))
+
+		if identity := getRecordDisplayName(ctx.PocketBase.AuthRecord, collection); identity != "" {
+			fmt.Printf("Identity:   %s\n", identity)
+		}
+
+		if pocketbase.IsAuthValid(ctx) {
+			fmt.Printf("Status:     %s\n", color.New(color.FgGreen).Sprint("valid"))
+		} else {
+			fmt.Printf("Status:     %s\n", color.New(color.FgYellow).Sprint("expired (run 'pb auth')"))
+		}
+		if ctx.PocketBase.AuthExpires != nil {
+			fmt.Printf("Expires:    %s\n", ctx.PocketBase.AuthExpires.Format("2006-01-02 15:04:05 MST"))
+		}
+
+		return nil
+	},
 }
 
 // getRecordDisplayName returns a human-readable display name for a record

@@ -98,36 +98,6 @@ func (c *Client) RefreshAuth(collection string) (*AuthResponse, error) {
 	return &authResp, nil
 }
 
-// ValidateAuth checks if the current authentication is valid
-func (c *Client) ValidateAuth(collection string) error {
-	if !c.IsAuthenticated() {
-		return fmt.Errorf("not authenticated")
-	}
-
-	endpoint := fmt.Sprintf("collections/%s/auth-refresh", collection)
-
-	// Try to refresh - if it fails, auth is invalid
-	_, err := c.makeRequest("POST", endpoint, nil)
-	if err != nil {
-		return fmt.Errorf("authentication is invalid or expired: %w", err)
-	}
-
-	return nil
-}
-
-// GetAuthenticatedUser returns the currently authenticated user record
-func (c *Client) GetAuthenticatedUser() (map[string]interface{}, error) {
-	if !c.IsAuthenticated() {
-		return nil, fmt.Errorf("not authenticated")
-	}
-
-	if c.authRecord == nil {
-		return nil, fmt.Errorf("no authentication record available")
-	}
-
-	return c.authRecord, nil
-}
-
 // UpdateAuthContextFromResponse updates a context with authentication data
 func UpdateAuthContextFromResponse(ctx *config.Context, authResp *AuthResponse) error {
 	if authResp == nil {
@@ -262,11 +232,4 @@ func GetCollectionDisplayName(collection string) string {
 		// For custom collections, return a formatted version
 		return fmt.Sprintf("Collection: %s", collection)
 	}
-}
-
-// ValidateAuthCollection ensures the collection supports authentication
-func ValidateAuthCollection(collection string) error {
-	// Since we're making this generic, we'll allow any collection name
-	// PocketBase will validate if the collection actually supports auth
-	return config.ValidateAuthCollection(collection)
 }

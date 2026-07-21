@@ -39,6 +39,10 @@ Features:
 - Generic CRUD operations on any collection
 - Backup management (requires admin authentication)`,
 	Version: version,
+	// Errors are printed once by main(); don't let cobra also print them or dump
+	// usage on operational (non-parse) failures.
+	SilenceErrors: true,
+	SilenceUsage:  true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show usage instead of full help when no subcommand provided
 		return fmt.Errorf("missing subcommand. See 'pb --help' for available commands")

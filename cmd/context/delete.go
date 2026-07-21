@@ -13,7 +13,7 @@ import (
 var forceDelete bool
 
 var deleteCmd = &cobra.Command{
-	Use:   "delete <n>",
+	Use:   "delete <name>",
 	Short: "Delete a PocketBase context",
 	Long: `Delete a context configuration from the system.
 
@@ -129,7 +129,7 @@ Examples:
 			} else {
 				fmt.Printf("\nCreate a new context:\n")
 				fmt.Printf("  %s\n", 
-					color.New(color.FgCyan).Sprint("pb context create <n> --url <url> --collections <collections>"))
+					color.New(color.FgCyan).Sprint("pb context create <name> --url <url> --collections <collections>"))
 			}
 		}
 

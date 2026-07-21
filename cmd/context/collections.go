@@ -49,7 +49,7 @@ Examples:
 		// Get active context
 		ctx, err := configManager.GetActiveContext()
 		if err != nil {
-			return fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+			return fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 		}
 
 		// Validate collection names
@@ -130,7 +130,7 @@ Examples:
 		// Get active context
 		ctx, err := configManager.GetActiveContext()
 		if err != nil {
-			return fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+			return fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 		}
 
 		// Remove collections from context
@@ -188,7 +188,7 @@ Examples:
 		// Get active context
 		ctx, err := configManager.GetActiveContext()
 		if err != nil {
-			return fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+			return fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 		}
 
 		collections := ctx.PocketBase.AvailableCollections
@@ -235,7 +235,7 @@ Examples:
 		// Get active context
 		ctx, err := configManager.GetActiveContext()
 		if err != nil {
-			return fmt.Errorf("no active context set. Use 'pb context select <n>' to set one")
+			return fmt.Errorf("no active context set. Use 'pb context select <name>' to set one")
 		}
 
 		if len(ctx.PocketBase.AvailableCollections) == 0 {
@@ -269,12 +269,4 @@ func init() {
 	collectionsCmd.AddCommand(removeCollectionsCmd)
 	collectionsCmd.AddCommand(listCollectionsCmd)
 	collectionsCmd.AddCommand(clearCollectionsCmd)
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

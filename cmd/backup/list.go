@@ -55,8 +55,9 @@ Examples:
 			return nil
 		}
 
-		// Display results based on output format
-		switch outputFlag {
+		// Display results based on the effective output format
+		format := getOutputFormat()
+		switch format {
 		case config.OutputFormatJSON:
 			return utils.OutputData(backups, config.OutputFormatJSON)
 		case config.OutputFormatYAML:
@@ -64,7 +65,7 @@ Examples:
 		case config.OutputFormatTable, "":
 			return displayBackupsTable(backups, ctx)
 		default:
-			return fmt.Errorf("unsupported output format: %s", outputFlag)
+			return fmt.Errorf("unsupported output format: %s", format)
 		}
 	},
 }

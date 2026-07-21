@@ -39,7 +39,7 @@ Examples:
 		if len(contexts) == 0 {
 			fmt.Printf("No contexts configured in %s.\n", configManager.GetConfigDir())
 			fmt.Printf("\nCreate your first context:\n  %s\n", 
-				color.New(color.FgCyan).Sprint("pb context create <n> --url <url> --collections <collections>"))
+				color.New(color.FgCyan).Sprint("pb context create <name> --url <url> --collections <collections>"))
 			return nil
 		}
 
@@ -58,7 +58,7 @@ Examples:
 				color.New(color.FgCyan).Sprint(globalConfig.ActiveContext))
 		} else {
 			fmt.Printf("\nNo active context set. Use %s to select one.\n", 
-				color.New(color.FgCyan).Sprint("pb context select <n>"))
+				color.New(color.FgCyan).Sprint("pb context select <name>"))
 		}
 
 		return nil

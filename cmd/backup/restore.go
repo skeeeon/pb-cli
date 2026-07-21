@@ -1,10 +1,8 @@
 package backup
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -54,33 +52,19 @@ Examples:
 			return fmt.Errorf("failed to get backup info: %w", err)
 		}
 
-		// Show confirmation prompt (unless --force is used)
-		if !forceFlag {
-			if err := confirmRestore(backup, ctx); err != nil {
-				return err
-			}
-		}
-
 		// Recommend creating a current backup before restore
 		fmt.Printf("\n%s Consider creating a backup of the current state before proceeding:\n",
 			color.New(color.FgYellow).Sprint("Recommendation:"))
-
-		// --- START: CORRECTED LINE ---
-		// Use Sprintf and escape the percent signs with '%%' to satisfy the linter.
 		fmt.Printf("  %s\n", color.New(color.FgCyan).Sprintf("pb backup create --name \"pre-restore-$(date +%%Y%%m%%d-%%H%%M)\""))
-		// --- END: CORRECTED LINE ---
 
+		// Show confirmation prompt (unless --force is used)
 		if !forceFlag {
-			fmt.Print("\nProceed with restore? (y/N): ")
-			reader := bufio.NewReader(os.Stdin)
-			response, err := reader.ReadString('\n')
+			confirmed, err := confirmRestore(backup, ctx)
 			if err != nil {
-				return fmt.Errorf("failed to read confirmation: %w", err)
+				return err
 			}
-
-			response = strings.TrimSpace(strings.ToLower(response))
-			if response != "y" && response != "yes" {
-				fmt.Println("Restore cancelled.")
+			if !confirmed {
+				fmt.Fprintln(os.Stderr, "Restore cancelled.")
 				return nil
 			}
 		}
@@ -133,41 +117,28 @@ Examples:
 	},
 }
 
-// confirmRestore prompts the user to confirm backup restoration
-func confirmRestore(backup *pocketbase.Backup, ctx *config.Context) error {
+// confirmRestore shows restore details and requires the user to type "restore"
+// to confirm. It returns true only when the user types the exact word.
+func confirmRestore(backup *pocketbase.Backup, ctx *config.Context) (bool, error) {
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 
-	fmt.Printf("%s DATABASE RESTORE OPERATION\n", red("⚠"))
-	fmt.Printf("\nBackup to restore:\n")
-	fmt.Printf("  Name: %s\n", bold(backup.Key))
-	fmt.Printf("  Size: %s\n", backup.GetHumanSize())
-	fmt.Printf("  Created: %s\n", backup.GetFormattedDate())
-	fmt.Printf("  Age: %s\n", utils.FormatTimeAgo(backup.Modified.Time))
-	fmt.Printf("  Context: %s\n", ctx.Name)
+	fmt.Fprintf(os.Stderr, "%s DATABASE RESTORE OPERATION\n", red("⚠"))
+	fmt.Fprintf(os.Stderr, "\nBackup to restore:\n")
+	fmt.Fprintf(os.Stderr, "  Name: %s\n", bold(backup.Key))
+	fmt.Fprintf(os.Stderr, "  Size: %s\n", backup.GetHumanSize())
+	fmt.Fprintf(os.Stderr, "  Created: %s\n", backup.GetFormattedDate())
+	fmt.Fprintf(os.Stderr, "  Age: %s\n", utils.FormatTimeAgo(backup.Modified.Time))
+	fmt.Fprintf(os.Stderr, "  Context: %s\n", ctx.Name)
 
-	fmt.Printf("\n%s CRITICAL WARNING:\n", red("🚨"))
-	fmt.Printf("  • This will REPLACE ALL current database data\n")
-	fmt.Printf("  • All current records, users, and settings will be LOST\n")
-	fmt.Printf("  • PocketBase will restart during the restoration process\n")
-	fmt.Printf("  • Your current authentication session will be invalidated\n")
-	fmt.Printf("  • This action CANNOT BE UNDONE\n")
+	fmt.Fprintf(os.Stderr, "\n%s CRITICAL WARNING:\n", red("🚨"))
+	fmt.Fprintf(os.Stderr, "  • This will REPLACE ALL current database data\n")
+	fmt.Fprintf(os.Stderr, "  • All current records, users, and settings will be LOST\n")
+	fmt.Fprintf(os.Stderr, "  • PocketBase will restart during the restoration process\n")
+	fmt.Fprintf(os.Stderr, "  • Your current authentication session will be invalidated\n")
+	fmt.Fprintf(os.Stderr, "  • This action CANNOT BE UNDONE\n")
 
-	fmt.Printf("\n%s Make sure you have a current backup before proceeding!\n", yellow("Recommendation:"))
-	fmt.Print("\nType 'restore' to confirm this dangerous operation: ")
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("failed to read confirmation: %w", err)
-	}
-
-	response = strings.TrimSpace(response)
-	if response != "restore" {
-		fmt.Println("Restore cancelled.")
-		return nil
-	}
-
-	return nil
+	fmt.Fprintf(os.Stderr, "\n%s Make sure you have a current backup before proceeding!\n", yellow("Recommendation:"))
+	return utils.ConfirmWord("\nType 'restore' to confirm this dangerous operation: ", "restore")
 }

@@ -1,10 +1,8 @@
 package collections
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -60,8 +58,13 @@ Examples:
 				return fmt.Errorf("failed to retrieve record: %w", err)
 			}
 
-			if err := confirmDeletion(collection, recordID, record); err != nil {
+			confirmed, err := confirmDeletion(collection, recordID, record)
+			if err != nil {
 				return err
+			}
+			if !confirmed {
+				fmt.Fprintln(os.Stderr, "Deletion cancelled.")
+				return nil
 			}
 		}
 
@@ -100,8 +103,9 @@ func init() {
 	deleteCmd.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Suppress success messages")
 }
 
-// confirmDeletion prompts the user to confirm deletion and shows record details
-func confirmDeletion(collection, recordID string, record map[string]interface{}) error {
+// confirmDeletion shows record details and prompts the user to confirm deletion.
+// It returns true only when the user explicitly confirms.
+func confirmDeletion(collection, recordID string, record map[string]interface{}) (bool, error) {
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
@@ -129,19 +133,5 @@ func confirmDeletion(collection, recordID string, record map[string]interface{})
 	}
 
 	fmt.Fprintf(os.Stderr, "\n%s This action cannot be undone.\n", yellow("Warning:"))
-	fmt.Fprint(os.Stderr, "Are you sure you want to delete this record? (y/N): ")
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("failed to read confirmation: %w", err)
-	}
-
-	response = strings.TrimSpace(strings.ToLower(response))
-	if response != "y" && response != "yes" {
-		fmt.Fprintln(os.Stderr, "Deletion cancelled.")
-		return nil
-	}
-
-	return nil
+	return utils.Confirm("Are you sure you want to delete this record? (y/N): ")
 }
