@@ -30,7 +30,8 @@ go.work.sum
 # env file
 .env
 
-.goreleaser.yaml
+# GoReleaser build output
+dist/
 
 # Editor/IDE
 # .idea/
