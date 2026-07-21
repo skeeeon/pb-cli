@@ -55,9 +55,9 @@ Examples:
 		// Display success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
+
 		fmt.Printf("%s Backup created successfully!\n", green("✓"))
-		
+
 		// Show backup details if available
 		if backup != nil {
 			fmt.Printf("\nBackup Details:\n")
@@ -68,15 +68,15 @@ Examples:
 
 			// Show next steps
 			fmt.Printf("\nNext steps:\n")
-			fmt.Printf("  Download backup: %s\n", 
+			fmt.Printf("  Download backup: %s\n",
 				cyan(fmt.Sprintf("pb backup download %s", backup.Key)))
-			fmt.Printf("  List all backups: %s\n", 
+			fmt.Printf("  List all backups: %s\n",
 				cyan("pb backup list"))
 		} else {
 			// Fallback message when we can't get backup details
 			fmt.Printf("  Context: %s\n", cyan(ctx.Name))
 			fmt.Printf("\nNote: Backup was created successfully, but details are not immediately available.\n")
-			fmt.Printf("You can view all backups with: %s\n", 
+			fmt.Printf("You can view all backups with: %s\n",
 				cyan("pb backup list"))
 		}
 

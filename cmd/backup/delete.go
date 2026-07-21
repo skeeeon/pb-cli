@@ -1,10 +1,8 @@
 package backup
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -54,14 +52,19 @@ Examples:
 
 		// Show confirmation prompt (unless --force is used)
 		if !forceFlag {
-			if err := confirmDeletion(backup, ctx); err != nil {
+			confirmed, err := confirmDeletion(backup, ctx)
+			if err != nil {
 				return err
+			}
+			if !confirmed {
+				fmt.Fprintln(os.Stderr, "Backup deletion cancelled.")
+				return nil
 			}
 		}
 
 		// Delete the backup
 		utils.PrintInfo(fmt.Sprintf("Deleting backup '%s'...", backupName))
-		
+
 		err = client.DeleteBackup(backupName)
 		if err != nil {
 			if pbErr, ok := err.(*pocketbase.PocketBaseError); ok {
@@ -77,7 +80,7 @@ Examples:
 		// Display success message
 		green := color.New(color.FgGreen).SprintFunc()
 		cyan := color.New(color.FgCyan).SprintFunc()
-		
+
 		fmt.Printf("%s Backup deleted successfully!\n", green("✓"))
 		fmt.Printf("  Backup: %s\n", backup.Key)
 		fmt.Printf("  Size freed: %s\n", backup.GetHumanSize())
@@ -85,42 +88,29 @@ Examples:
 
 		// Show next steps
 		fmt.Printf("\nNext steps:\n")
-		fmt.Printf("  List remaining backups: %s\n", 
+		fmt.Printf("  List remaining backups: %s\n",
 			cyan("pb backup list"))
-		fmt.Printf("  Create new backup: %s\n", 
+		fmt.Printf("  Create new backup: %s\n",
 			cyan("pb backup create"))
 
 		return nil
 	},
 }
 
-// confirmDeletion prompts the user to confirm backup deletion
-func confirmDeletion(backup *pocketbase.Backup, ctx *config.Context) error {
+// confirmDeletion shows backup details and prompts the user to confirm deletion.
+// It returns true only when the user explicitly confirms.
+func confirmDeletion(backup *pocketbase.Backup, ctx *config.Context) (bool, error) {
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 	bold := color.New(color.Bold).SprintFunc()
 
-	fmt.Printf("%s Backup to be deleted:\n", red("⚠"))
-	fmt.Printf("  Name: %s\n", bold(backup.Key))
-	fmt.Printf("  Size: %s\n", backup.GetHumanSize())
-	fmt.Printf("  Created: %s\n", backup.GetFormattedDate())
-	fmt.Printf("  Age: %s\n", utils.FormatTimeAgo(backup.Modified.Time))
-	fmt.Printf("  Context: %s\n", ctx.Name)
+	fmt.Fprintf(os.Stderr, "%s Backup to be deleted:\n", red("⚠"))
+	fmt.Fprintf(os.Stderr, "  Name: %s\n", bold(backup.Key))
+	fmt.Fprintf(os.Stderr, "  Size: %s\n", backup.GetHumanSize())
+	fmt.Fprintf(os.Stderr, "  Created: %s\n", backup.GetFormattedDate())
+	fmt.Fprintf(os.Stderr, "  Age: %s\n", utils.FormatTimeAgo(backup.Modified.Time))
+	fmt.Fprintf(os.Stderr, "  Context: %s\n", ctx.Name)
 
-	fmt.Printf("\n%s This action cannot be undone.\n", yellow("Warning:"))
-	fmt.Print("Are you sure you want to delete this backup? (y/N): ")
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		return fmt.Errorf("failed to read confirmation: %w", err)
-	}
-
-	response = strings.TrimSpace(strings.ToLower(response))
-	if response != "y" && response != "yes" {
-		fmt.Println("Backup deletion cancelled.")
-		return nil
-	}
-
-	return nil
+	fmt.Fprintf(os.Stderr, "\n%s This action cannot be undone.\n", yellow("Warning:"))
+	return utils.Confirm("Are you sure you want to delete this backup? (y/N): ")
 }

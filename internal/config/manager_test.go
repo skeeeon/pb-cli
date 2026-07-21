@@ -104,6 +104,32 @@ func TestContextLifecycle(t *testing.T) {
 	assert.Empty(t, contextsAfterDelete)
 }
 
+// TestContextFilePermissions ensures the context file (which stores the plaintext
+// auth token) is written with owner-only 0600 permissions.
+func TestContextFilePermissions(t *testing.T) {
+	manager := setupTestManager(t)
+	contextName := "secure-context"
+
+	ctx := &config.Context{
+		Name: contextName,
+		PocketBase: config.PocketBaseConfig{
+			URL:       "http://localhost:8090",
+			AuthToken: "super-secret-token",
+		},
+	}
+	require.NoError(t, manager.SaveContext(ctx))
+
+	info, err := os.Stat(manager.GetContextPath(contextName))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0600), info.Mode().Perm(),
+		"context file must be owner-only (0600) because it holds the auth token")
+
+	dirInfo, err := os.Stat(manager.GetContextDir(contextName))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0700), dirInfo.Mode().Perm(),
+		"context directory should be owner-only (0700)")
+}
+
 // TestGetActiveContext_NoActiveSet tests the behavior when no active context is set.
 func TestGetActiveContext_NoActiveSet(t *testing.T) {
 	manager := setupTestManager(t)

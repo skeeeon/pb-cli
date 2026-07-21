@@ -20,9 +20,9 @@ var (
 	configManager *config.Manager
 
 	// Global flags
-	globalOutputFormat string
+	globalOutputFormat  string
 	globalColorsEnabled bool
-	globalDebug bool
+	globalDebug         bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -39,6 +39,10 @@ Features:
 - Generic CRUD operations on any collection
 - Backup management (requires admin authentication)`,
 	Version: version,
+	// Errors are printed once by main(); don't let cobra also print them or dump
+	// usage on operational (non-parse) failures.
+	SilenceErrors: true,
+	SilenceUsage:  true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Show usage instead of full help when no subcommand provided
 		return fmt.Errorf("missing subcommand. See 'pb --help' for available commands")
@@ -123,13 +127,13 @@ func init() {
 func addCommands() {
 	// Context management commands
 	rootCmd.AddCommand(context.ContextCmd)
-	
+
 	// Authentication commands
 	rootCmd.AddCommand(auth.AuthCmd)
-	
+
 	// Backup management commands
 	rootCmd.AddCommand(backup.BackupCmd)
-	
+
 	// Collections CRUD commands
 	rootCmd.AddCommand(collections.CollectionsCmd)
 }
@@ -139,7 +143,7 @@ func initConfig() {
 	// Set config file type
 	viper.SetConfigType("yaml")
 	viper.SetConfigName("config")
-	
+
 	// Look for config in XDG config directory
 	if configManager != nil {
 		viper.AddConfigPath(configManager.GetConfigDir())

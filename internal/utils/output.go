@@ -9,8 +9,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
-	"pb-cli/internal/config"
 	"gopkg.in/yaml.v3"
+	"pb-cli/internal/config"
 )
 
 // OutputData formats and prints data according to the specified format
@@ -70,7 +70,7 @@ func outputMapSliceTable(data []map[string]interface{}) error {
 	// Extract headers from first item, prioritizing common fields
 	var headers []string
 	commonFields := []string{"id", "name", "title", "email", "created", "updated"}
-	
+
 	// Add common fields first if they exist
 	firstItem := data[0]
 	for _, field := range commonFields {
@@ -78,7 +78,7 @@ func outputMapSliceTable(data []map[string]interface{}) error {
 			headers = append(headers, field)
 		}
 	}
-	
+
 	// Add remaining fields
 	for key := range firstItem {
 		found := false
@@ -132,14 +132,14 @@ func outputMapTable(data map[string]interface{}) error {
 	// Sort fields for consistent output
 	priorityFields := []string{"id", "name", "title", "email", "description", "type", "created", "updated"}
 	var orderedKeys []string
-	
+
 	// Add priority fields first
 	for _, field := range priorityFields {
 		if _, exists := data[field]; exists {
 			orderedKeys = append(orderedKeys, field)
 		}
 	}
-	
+
 	// Add remaining fields
 	for key := range data {
 		found := false
@@ -262,30 +262,6 @@ func PrintDebug(message string) {
 	fmt.Fprintf(os.Stderr, "%s %s\n", gray("Debug:"), message)
 }
 
-// TruncateString truncates a string to the specified length with ellipsis
-func TruncateString(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	if maxLen <= 3 {
-		return s[:maxLen]
-	}
-	return s[:maxLen-3] + "..."
-}
-
-// FormatDuration formats a duration string in a human-readable way
-func FormatDuration(seconds int64) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%ds", seconds)
-	}
-	if seconds < 3600 {
-		return fmt.Sprintf("%dm %ds", seconds/60, seconds%60)
-	}
-	hours := seconds / 3600
-	minutes := (seconds % 3600) / 60
-	return fmt.Sprintf("%dh %dm", hours, minutes)
-}
-
 // TitleCase converts a string to title case (first letter uppercase)
 func TitleCase(s string) string {
 	if s == "" {
@@ -298,7 +274,7 @@ func TitleCase(s string) string {
 func FormatTimeAgo(t time.Time) string {
 	now := time.Now()
 	diff := now.Sub(t)
-	
+
 	if diff < time.Minute {
 		return "just now"
 	} else if diff < time.Hour {
@@ -346,24 +322,4 @@ func FormatBytes(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
-
-// ToJSON converts data to JSON bytes
-func ToJSON(data interface{}) ([]byte, error) {
-	return json.Marshal(data)
-}
-
-// FormatJSON formats JSON bytes for pretty printing
-func FormatJSON(data []byte) (string, error) {
-	var obj interface{}
-	if err := json.Unmarshal(data, &obj); err != nil {
-		return "", err
-	}
-	
-	formatted, err := json.MarshalIndent(obj, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	
-	return string(formatted), nil
 }

@@ -8,18 +8,19 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"pb-cli/internal/config"
+	"pb-cli/internal/utils"
 )
 
 var (
-	pbURL           string
-	pbAuthCollection string
-	availableCollections []string
-	pbAutoRefresh           bool
-	pbAutoRefreshThreshold  string
+	pbURL                  string
+	pbAuthCollection       string
+	availableCollections   []string
+	pbAutoRefresh          bool
+	pbAutoRefreshThreshold string
 )
 
 var createCmd = &cobra.Command{
-	Use:   "create <n>",
+	Use:   "create <name>",
 	Short: "Create a new PocketBase context",
 	Long: `Create a new context configuration for a PocketBase environment.
 
@@ -52,6 +53,9 @@ Examples:
 		// Validate required flags
 		if pbURL == "" {
 			return fmt.Errorf("--url is required")
+		}
+		if err := utils.ValidatePocketBaseURL(pbURL); err != nil {
+			return fmt.Errorf("invalid --url: %w", err)
 		}
 
 		// Validate auth collection
@@ -106,7 +110,7 @@ Examples:
 
 		// Print success message
 		green := color.New(color.FgGreen).SprintFunc()
-		fmt.Printf("%s Context '%s' created successfully\n", 
+		fmt.Printf("%s Context '%s' created successfully\n",
 			green("✓"), contextName)
 
 		// Show context directory information
@@ -134,13 +138,13 @@ Examples:
 
 		// Suggest next steps
 		fmt.Printf("\nNext steps:\n")
-		fmt.Printf("  1. Select this context: %s\n", 
+		fmt.Printf("  1. Select this context: %s\n",
 			color.New(color.FgCyan).Sprintf("pb context select %s", contextName))
-		fmt.Printf("  2. Authenticate with PocketBase: %s\n", 
+		fmt.Printf("  2. Authenticate with PocketBase: %s\n",
 			color.New(color.FgCyan).Sprint("pb auth"))
-		
+
 		if len(availableCollections) == 0 {
-			fmt.Printf("  3. Add collections: %s\n", 
+			fmt.Printf("  3. Add collections: %s\n",
 				color.New(color.FgCyan).Sprint("pb context collections add <collection_names>"))
 		}
 
@@ -150,7 +154,7 @@ Examples:
 
 func init() {
 	createCmd.Flags().StringVar(&pbURL, "url", "", "PocketBase server URL (required)")
-	createCmd.Flags().StringVar(&pbAuthCollection, "auth-collection", config.AuthCollectionUsers, 
+	createCmd.Flags().StringVar(&pbAuthCollection, "auth-collection", config.AuthCollectionUsers,
 		"PocketBase auth collection (users|admins|clients|custom)")
 	createCmd.Flags().StringSliceVar(&availableCollections, "collections", nil,
 		"Available collections (comma-separated)")
