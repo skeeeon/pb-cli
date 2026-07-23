@@ -30,6 +30,9 @@ Actions:
   update   Update an existing record with JSON data or file
   delete   Delete a record with confirmation
 
+Any collection your authenticated user can access works directly — no need to
+register collections first. Use 'pb schema' to see which collections exist.
+
 Data for 'create' and 'update' actions can be provided in one of three ways:
   1. As a JSON string argument
   2. From a file using the --file flag
@@ -105,20 +108,6 @@ func validateActiveContext() (*config.Context, error) {
 
 	if !pocketbase.IsAuthValid(ctx) {
 		return nil, fmt.Errorf("authentication has expired. Run 'pb auth' to re-authenticate")
-	}
-
-	return ctx, nil
-}
-
-// validateCollection validates that the collection is available in the current context
-func validateCollection(collection string) (*config.Context, error) {
-	ctx, err := validateActiveContext()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := validateCollectionInContext(collection, ctx); err != nil {
-		return nil, err
 	}
 
 	return ctx, nil

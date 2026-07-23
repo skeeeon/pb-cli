@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"pb-cli/internal/config"
 	"pb-cli/internal/utils"
 )
 
@@ -121,27 +120,6 @@ func validateRecordID(recordID string) error {
 	}
 
 	return nil
-}
-
-// validateCollectionInContext checks if a collection is available in the given context
-// and returns a helpful error message if not
-func validateCollectionInContext(collection string, ctx *config.Context) error {
-	// Check if collection exists in context
-	for _, available := range ctx.PocketBase.AvailableCollections {
-		if available == collection {
-			return nil
-		}
-	}
-
-	// Collection not found - provide helpful error message
-	available := ctx.PocketBase.AvailableCollections
-	if len(available) == 0 {
-		return fmt.Errorf("collection '%s' not configured in context. No collections available. Add with 'pb context collections add %s'",
-			collection, collection)
-	}
-
-	return fmt.Errorf("collection '%s' not configured in context. Available collections: %s. Add with 'pb context collections add %s'",
-		collection, strings.Join(available, ", "), collection)
 }
 
 // provideSuggestions provides helpful suggestions based on common errors

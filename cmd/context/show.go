@@ -162,14 +162,6 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 	}
 	// --- END: CORRECTED AUTHENTICATION STATUS LOGIC ---
 
-	// Available collections
-	fmt.Printf("  Available Collections: %d\n", len(ctx.PocketBase.AvailableCollections))
-	if len(ctx.PocketBase.AvailableCollections) > 0 {
-		fmt.Printf("    %s\n", strings.Join(ctx.PocketBase.AvailableCollections, ", "))
-	} else {
-		fmt.Printf("    %s\n", yellow("None configured"))
-	}
-
 	fmt.Println()
 
 	// Show helpful commands
@@ -180,24 +172,10 @@ func showContextTable(ctx *config.Context, isActive bool, configManager *config.
 	} else if ctx.PocketBase.AuthToken == "" || !pocketbase.IsAuthValid(ctx) { // Prompt for auth if not authenticated OR expired
 		fmt.Printf("%s\n", bold("Next Steps:"))
 		fmt.Printf("  Authenticate: %s\n", cyan("pb auth"))
-		if len(ctx.PocketBase.AvailableCollections) == 0 {
-			fmt.Printf("  Add collections: %s\n", cyan("pb context collections add <collection_names>"))
-		}
-	} else if len(ctx.PocketBase.AvailableCollections) == 0 {
-		fmt.Printf("%s\n", bold("Next Steps:"))
-		fmt.Printf("  Add collections: %s\n", cyan("pb context collections add <collection_names>"))
 	} else {
 		fmt.Printf("%s\n", bold("Available Operations:"))
-		// Show a few example collection operations
-		for i, collection := range ctx.PocketBase.AvailableCollections {
-			if i >= 3 { // Limit to first 3 collections
-				break
-			}
-			fmt.Printf("  %s\n", cyan(fmt.Sprintf("pb collections list %s", collection)))
-		}
-		if len(ctx.PocketBase.AvailableCollections) > 3 {
-			fmt.Printf("  ... and %d more collections\n", len(ctx.PocketBase.AvailableCollections)-3)
-		}
+		fmt.Printf("  List collections: %s\n", cyan("pb schema"))
+		fmt.Printf("  List records:     %s\n", cyan("pb collections list <collection>"))
 	}
 }
 

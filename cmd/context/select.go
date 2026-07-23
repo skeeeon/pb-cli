@@ -59,13 +59,6 @@ Examples:
 		fmt.Printf("  PocketBase URL: %s\n", ctx.PocketBase.URL)
 		fmt.Printf("  Auth Collection: %s\n", ctx.PocketBase.AuthCollection)
 
-		if len(ctx.PocketBase.AvailableCollections) > 0 {
-			fmt.Printf("  Collections: %v\n", ctx.PocketBase.AvailableCollections)
-		} else {
-			fmt.Printf("  Collections: %s\n",
-				color.New(color.FgYellow).Sprint("None configured"))
-		}
-
 		// Authentication status
 		if ctx.PocketBase.AuthToken != "" {
 			if ctx.PocketBase.AuthExpires != nil {
@@ -83,12 +76,6 @@ Examples:
 			fmt.Printf("\nNext steps:\n")
 			fmt.Printf("  Authenticate with PocketBase: %s\n",
 				color.New(color.FgCyan).Sprint("pb auth"))
-		}
-
-		// Show collection management suggestions if no collections
-		if len(ctx.PocketBase.AvailableCollections) == 0 {
-			fmt.Printf("  Configure collections: %s\n",
-				color.New(color.FgCyan).Sprint("pb context collections add <collection_names>"))
 		}
 
 		return nil

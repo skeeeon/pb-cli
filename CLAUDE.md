@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is this?
 
-pb-cli is a Go CLI tool for managing PocketBase instances. It provides multi-environment context management, authentication, CRUD operations on collections, and backup management. Built with Cobra (commands), go-resty (HTTP), and Viper (config). The compiled binary is named `pb`.
+pb-cli is a Go CLI tool for managing PocketBase instances. It provides multi-environment context management, authentication, CRUD operations on collection records, schema inspection, and backup management. Built with Cobra (commands), go-resty (HTTP), and Viper (config). The compiled binary is named `pb`. It targets PocketBase v0.23+ (collection definitions use `fields`; superuser auth lives in the `_superusers` collection).
 
 ## Build & Test Commands
 
@@ -35,12 +35,18 @@ No Makefile or task runner — use `go`/`goreleaser` directly.
 
 1. **`cmd/`** — Cobra command definitions. `cmd/root.go` bootstraps the app: initializes `config.Manager` in `PersistentPreRunE`, then distributes it to subcommand packages via `SetConfigManager()` setters. `main.go` prints any returned error once to stderr and exits 1; the root command sets `SilenceErrors`/`SilenceUsage` so cobra does not also print it.
 2. **`internal/pocketbase/`** — HTTP client wrapping PocketBase's REST API via go-resty. `client.go` handles all HTTP calls; `errors.go` converts HTTP responses into `PocketBaseError` with friendly messages and suggestions; `types.go` defines API data structures; `auth.go` handles login, token refresh, and JWT expiry parsing.
-3. **`internal/config/`** — XDG-compliant config persistence (`~/.config/pb/`). Global config (`config.yaml`) tracks active context and defaults. Each context gets a subdirectory with `context.yaml` storing URL, auth token, and available collections.
+3. **`internal/config/`** — XDG-compliant config persistence (`~/.config/pb/`). Global config (`config.yaml`) tracks active context and defaults. Each context gets a subdirectory with `context.yaml` storing URL, auth collection, and the cached auth token/expiry.
 4. **`internal/utils/`** — Output formatting (JSON/YAML/table), colored messaging helpers, validation, and interactive prompts (`prompt.go`).
 
 ### Command routing for collections
 
 `cmd/collections/` uses proper Cobra subcommands with action-first syntax: `pb collections <action> <collection>` (alias: `pb c <action> <collection>`). Each action (list, get, create, update, delete) is its own file with scoped flags. Shared helpers (validation, client creation, JSON parsing) live in `root.go`.
+
+Collection names are passed straight to the API — there is **no allowlist to register first** (`pb schema` lists what exists). `pb collections list` returns one page by default; `--all` walks every page (500/request) and is mutually exclusive with `--page`/`--limit`.
+
+### Schema inspection
+
+`cmd/schema/` implements `pb schema [collection]`: with no argument it lists collections; with a name it shows that collection's fields and access rules. It calls the collection endpoints (`GetCollections`/`GetCollectionSchema`), which are **superuser-only** in PocketBase, so a 401/403 surfaces a `pb auth --collection _superusers` hint.
 
 ### HTTP client
 
@@ -54,5 +60,6 @@ No Makefile or task runner — use `go`/`goreleaser` directly.
 - **Config injection**: The config manager is passed to subcommands via setter functions, not globals.
 - **Auth tokens**: Stored in context YAML files, checked for expiry before API calls. The context file is written `0600` and its directories `0700` because it holds the plaintext token — preserve these modes in `internal/config/manager.go`.
 - **Non-interactive auth**: `pb auth` resolves email as `--email` > `PB_EMAIL` > prompt, and password as `--password` > `--password-stdin` > `PB_PASSWORD` > prompt. `pb auth status` (alias `whoami`) and `pb auth logout` inspect/clear the stored token.
+- **Superuser operations**: `pb schema` and all `pb backup` commands require `_superusers` authentication (`pb auth --collection _superusers`). Record CRUD (`pb collections ...`) works with whatever collection the active token can access.
 - **Output format**: every command resolves its format as `--output/-o` flag, else the global `output_format` (default `json`). Avoid hardcoding a per-command default; fall back to `config.Global.OutputFormat`.
 - **No speculative code**: keep the surface minimal — delete unused helpers/types rather than keeping them "for later" (`git` remembers).

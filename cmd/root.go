@@ -10,6 +10,7 @@ import (
 	"pb-cli/cmd/backup"
 	"pb-cli/cmd/collections"
 	"pb-cli/cmd/context"
+	"pb-cli/cmd/schema"
 	"pb-cli/internal/config"
 )
 
@@ -95,6 +96,7 @@ Features:
 		auth.SetConfigManager(configManager)
 		backup.SetConfigManager(configManager)
 		collections.SetConfigManager(configManager)
+		schema.SetConfigManager(configManager)
 
 		return nil
 	},
@@ -136,6 +138,9 @@ func addCommands() {
 
 	// Collections CRUD commands
 	rootCmd.AddCommand(collections.CollectionsCmd)
+
+	// Schema inspection commands
+	rootCmd.AddCommand(schema.SchemaCmd)
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -275,56 +275,6 @@ func (m *Manager) ValidateContextName(name string) error {
 	return nil
 }
 
-// GetContextCollections returns the collections configured for a context
-func (m *Manager) GetContextCollections(name string) ([]string, error) {
-	ctx, err := m.LoadContext(name)
-	if err != nil {
-		return nil, err
-	}
-
-	return ctx.PocketBase.AvailableCollections, nil
-}
-
-// AddContextCollection adds a collection to a context
-func (m *Manager) AddContextCollection(contextName, collection string) error {
-	ctx, err := m.LoadContext(contextName)
-	if err != nil {
-		return err
-	}
-
-	if err := ctx.AddCollection(collection); err != nil {
-		return err
-	}
-
-	return m.SaveContext(ctx)
-}
-
-// RemoveContextCollection removes a collection from a context
-func (m *Manager) RemoveContextCollection(contextName, collection string) error {
-	ctx, err := m.LoadContext(contextName)
-	if err != nil {
-		return err
-	}
-
-	if err := ctx.RemoveCollection(collection); err != nil {
-		return err
-	}
-
-	return m.SaveContext(ctx)
-}
-
-// ClearContextCollections clears all collections from a context
-func (m *Manager) ClearContextCollections(contextName string) error {
-	ctx, err := m.LoadContext(contextName)
-	if err != nil {
-		return err
-	}
-
-	ctx.PocketBase.AvailableCollections = []string{}
-
-	return m.SaveContext(ctx)
-}
-
 // NewManagerWithBase creates a new configuration manager with a specific base directory.
 // This is primarily used for testing.
 func NewManagerWithBase(baseDir string) (*Manager, error) {

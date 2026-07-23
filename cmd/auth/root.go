@@ -31,8 +31,7 @@ var AuthCmd = &cobra.Command{
 PocketBase supports authentication against different collections depending on your
 application's setup. Common collections include:
   users        Regular user accounts (default)
-  admins       Administrative accounts
-  clients      API client accounts
+  _superusers  Superuser (admin) accounts — required for backups and 'pb schema'
   <custom>     Any custom authentication collection
 
 The authentication will:
@@ -55,8 +54,8 @@ Examples:
   PB_EMAIL=ci@example.com PB_PASSWORD=secret pb auth
   echo "$PB_PASSWORD" | pb auth --email ci@example.com --password-stdin
 
-  # Authenticate against admin collection
-  pb auth --collection admins --email admin@example.com
+  # Authenticate as a superuser (needed for backups and 'pb schema')
+  pb auth --collection _superusers --email admin@example.com
 
   # Check status or clear the stored token
   pb auth status
@@ -176,20 +175,8 @@ Examples:
 
 		// Show available next steps
 		fmt.Printf("\nNext steps:\n")
-
-		if len(ctx.PocketBase.AvailableCollections) == 0 {
-			fmt.Printf("  Configure collections: %s\n",
-				cyan("pb context collections add <collection_names>"))
-		} else {
-			fmt.Printf("  List available collections: %s\n",
-				cyan("pb context collections list"))
-
-			if len(ctx.PocketBase.AvailableCollections) > 0 {
-				firstCollection := ctx.PocketBase.AvailableCollections[0]
-				fmt.Printf("  Example operation: %s\n",
-					cyan(fmt.Sprintf("pb collections list %s", firstCollection)))
-			}
-		}
+		fmt.Printf("  List collections: %s\n", cyan("pb schema"))
+		fmt.Printf("  List records:     %s\n", cyan("pb collections list <collection>"))
 
 		return nil
 	},

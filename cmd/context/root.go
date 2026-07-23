@@ -29,9 +29,8 @@ Context Directory Structure:
       └── context.yaml
 
 Examples:
-  pb context create production --url https://api.example.com --collections posts,users
+  pb context create production --url https://api.example.com
   pb context select production
-  pb context collections add comments categories
   pb context list
   pb context show production`,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -49,7 +48,6 @@ func init() {
 	ContextCmd.AddCommand(selectCmd)
 	ContextCmd.AddCommand(showCmd)
 	ContextCmd.AddCommand(deleteCmd)
-	ContextCmd.AddCommand(collectionsCmd)
 }
 
 // SetConfigManager sets the configuration manager for the context commands

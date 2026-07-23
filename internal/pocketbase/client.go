@@ -238,6 +238,88 @@ func (c *Client) ListRecords(collection string, options *ListOptions) (*RecordsL
 	return &result, nil
 }
 
+// ListAllRecords retrieves every record matching options across all pages. It ignores
+// options.Page/PerPage and walks pages using PocketBase's maximum page size (500),
+// returning a single RecordsList with all items collected.
+func (c *Client) ListAllRecords(collection string, options *ListOptions) (*RecordsList, error) {
+	// Copy so we can drive pagination without mutating the caller's options.
+	opts := ListOptions{}
+	if options != nil {
+		opts = *options
+	}
+	opts.Page = 1
+	opts.PerPage = 500
+
+	var items []map[string]interface{}
+	totalItems := 0
+	for {
+		page, err := c.ListRecords(collection, &opts)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, page.Items...)
+		totalItems = page.TotalItems
+
+		utils.PrintDebug(fmt.Sprintf("Fetched page %d/%d (%d records so far)", opts.Page, page.TotalPages, len(items)))
+
+		if opts.Page >= page.TotalPages {
+			break
+		}
+		opts.Page++
+	}
+
+	return &RecordsList{
+		Page:       1,
+		PerPage:    len(items),
+		TotalItems: totalItems,
+		TotalPages: 1,
+		Items:      items,
+	}, nil
+}
+
+// GetCollections lists all collections defined on the instance. Requires superuser auth.
+// perPage is set high so instances with many collections aren't silently truncated.
+func (c *Client) GetCollections() ([]Collection, error) {
+	if !c.IsAuthenticated() {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	resp, err := c.makeRequest("GET", "collections?perPage=500", nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collections: %w", err)
+	}
+
+	var result struct {
+		Items []Collection `json:"items"`
+	}
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse collections response: %w", err)
+	}
+
+	return result.Items, nil
+}
+
+// GetCollectionSchema returns the definition (fields, rules) for a single collection.
+// Requires superuser auth.
+func (c *Client) GetCollectionSchema(collection string) (*Collection, error) {
+	if !c.IsAuthenticated() {
+		return nil, fmt.Errorf("authentication required")
+	}
+
+	resp, err := c.makeRequest("GET", fmt.Sprintf("collections/%s", collection), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get collection schema: %w", err)
+	}
+
+	var result Collection
+	if err := json.Unmarshal(resp.Body(), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse collection schema response: %w", err)
+	}
+
+	return &result, nil
+}
+
 // GetRecord retrieves a single record by ID with optional expand and fields filtering
 func (c *Client) GetRecord(collection, id string, expand []string, fields []string) (map[string]interface{}, error) {
 	if !c.IsAuthenticated() {

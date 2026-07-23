@@ -224,10 +224,8 @@ func GetCollectionDisplayName(collection string) string {
 	switch collection {
 	case config.AuthCollectionUsers:
 		return "Users"
-	case config.AuthCollectionAdmins:
-		return "Administrators"
-	case config.AuthCollectionClients:
-		return "API Clients"
+	case config.AuthCollectionSuperusers:
+		return "Superusers"
 	default:
 		// For custom collections, return a formatted version
 		return fmt.Sprintf("Collection: %s", collection)

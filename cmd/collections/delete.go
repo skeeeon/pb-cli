@@ -31,7 +31,7 @@ Examples:
 		collection := args[0]
 		recordID := args[1]
 
-		ctx, err := validateCollection(collection)
+		ctx, err := validateActiveContext()
 		if err != nil {
 			return err
 		}
