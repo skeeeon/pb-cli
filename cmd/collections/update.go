@@ -36,7 +36,7 @@ Examples:
 			jsonData = args[2]
 		}
 
-		ctx, err := validateCollection(collection)
+		ctx, err := validateActiveContext()
 		if err != nil {
 			return err
 		}

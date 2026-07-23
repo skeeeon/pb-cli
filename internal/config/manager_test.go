@@ -56,9 +56,8 @@ func TestContextLifecycle(t *testing.T) {
 	newContext := &config.Context{
 		Name: contextName,
 		PocketBase: config.PocketBaseConfig{
-			URL:                  "http://localhost:8090",
-			AuthCollection:       "users",
-			AvailableCollections: []string{"posts"},
+			URL:            "http://localhost:8090",
+			AuthCollection: "users",
 		},
 	}
 	err := manager.SaveContext(newContext)
@@ -83,7 +82,7 @@ func TestContextLifecycle(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, loadedContext)
 	assert.Equal(t, "http://localhost:8090", loadedContext.PocketBase.URL)
-	assert.Contains(t, loadedContext.PocketBase.AvailableCollections, "posts")
+	assert.Equal(t, "users", loadedContext.PocketBase.AuthCollection)
 
 	// 5. Set the context as active
 	err = manager.SetActiveContext(contextName)

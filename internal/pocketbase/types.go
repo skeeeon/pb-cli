@@ -27,6 +27,31 @@ type ListOptions struct {
 	Expand  []string `json:"expand,omitempty"`
 }
 
+// Collection represents a PocketBase collection definition.
+// Field names match the PocketBase v0.23+ API (the old "schema" key is now "fields").
+type Collection struct {
+	ID         string  `json:"id"`
+	Name       string  `json:"name"`
+	Type       string  `json:"type"` // "base", "auth", or "view"
+	System     bool    `json:"system"`
+	Fields     []Field `json:"fields"`
+	ListRule   *string `json:"listRule"`
+	ViewRule   *string `json:"viewRule"`
+	CreateRule *string `json:"createRule"`
+	UpdateRule *string `json:"updateRule"`
+	DeleteRule *string `json:"deleteRule"`
+}
+
+// Field represents a single field in a collection's schema.
+type Field struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	System      bool   `json:"system"`
+	Required    bool   `json:"required"`
+	Presentable bool   `json:"presentable"`
+}
+
 // Backup represents a PocketBase backup
 type Backup struct {
 	Key      string `json:"key"`

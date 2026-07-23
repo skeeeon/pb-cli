@@ -69,12 +69,6 @@ Examples:
 		fmt.Printf("  PocketBase URL: %s\n", ctx.PocketBase.URL)
 		fmt.Printf("  Auth Collection: %s\n", ctx.PocketBase.AuthCollection)
 
-		if len(ctx.PocketBase.AvailableCollections) > 0 {
-			fmt.Printf("  Collections: %v\n", ctx.PocketBase.AvailableCollections)
-		} else {
-			fmt.Printf("  Collections: None configured\n")
-		}
-
 		if isActive {
 			fmt.Printf("  Status: %s\n", red("CURRENTLY ACTIVE"))
 		}
@@ -129,7 +123,7 @@ Examples:
 			} else {
 				fmt.Printf("\nCreate a new context:\n")
 				fmt.Printf("  %s\n",
-					color.New(color.FgCyan).Sprint("pb context create <name> --url <url> --collections <collections>"))
+					color.New(color.FgCyan).Sprint("pb context create <name> --url <url>"))
 			}
 		}
 

@@ -3,7 +3,6 @@ package context
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
@@ -39,7 +38,7 @@ Examples:
 		if len(contexts) == 0 {
 			fmt.Printf("No contexts configured in %s.\n", configManager.GetConfigDir())
 			fmt.Printf("\nCreate your first context:\n  %s\n",
-				color.New(color.FgCyan).Sprint("pb context create <name> --url <url> --collections <collections>"))
+				color.New(color.FgCyan).Sprint("pb context create <name> --url <url>"))
 			return nil
 		}
 
@@ -70,7 +69,6 @@ type ContextDisplayInfo struct {
 	Name           string
 	Status         string
 	PocketBaseURL  string
-	Collections    string
 	AuthCollection string
 	LastAuth       string
 	IsActive       bool
@@ -96,7 +94,6 @@ func displayContextsTable(contextNames []string, activeContext string) {
 			ctx.Status,
 			ctx.PocketBaseURL,
 			ctx.AuthCollection,
-			ctx.Collections,
 			ctx.LastAuth,
 		})
 	}
@@ -113,7 +110,6 @@ func processContextForDisplay(contextName, activeContext string) ContextDisplayI
 			Name:           contextName,
 			Status:         color.New(color.FgRed).Sprint("ERROR"),
 			PocketBaseURL:  "N/A",
-			Collections:    "N/A",
 			AuthCollection: "N/A",
 			LastAuth:       "N/A",
 			HasError:       true,
@@ -127,7 +123,6 @@ func processContextForDisplay(contextName, activeContext string) ContextDisplayI
 		Status:         formatContextStatus(ctx, isActive),
 		PocketBaseURL:  formatPocketBaseURL(ctx.PocketBase.URL),
 		AuthCollection: formatAuthCollection(ctx.PocketBase.AuthCollection),
-		Collections:    formatCollections(ctx.PocketBase.AvailableCollections),
 		LastAuth:       formatLastAuth(ctx),
 		IsActive:       isActive,
 		HasError:       false,
@@ -139,7 +134,7 @@ func createContextTable() *tablewriter.Table {
 	table := tablewriter.NewWriter(os.Stdout)
 
 	// Set headers
-	table.SetHeader([]string{"NAME", "STATUS", "POCKETBASE URL", "AUTH COLLECTION", "COLLECTIONS", "LAST AUTH"})
+	table.SetHeader([]string{"NAME", "STATUS", "POCKETBASE URL", "AUTH COLLECTION", "LAST AUTH"})
 
 	// Configure table appearance - no borders for clean look
 	table.SetBorder(false)
@@ -161,8 +156,7 @@ func createContextTable() *tablewriter.Table {
 	table.SetColMinWidth(1, 18) // STATUS column
 	table.SetColMinWidth(2, 25) // POCKETBASE URL column
 	table.SetColMinWidth(3, 15) // AUTH COLLECTION column
-	table.SetColMinWidth(4, 20) // COLLECTIONS column
-	table.SetColMinWidth(5, 12) // LAST AUTH column
+	table.SetColMinWidth(4, 12) // LAST AUTH column
 
 	return table
 }
@@ -208,25 +202,6 @@ func formatAuthCollection(authCollection string) string {
 		return color.New(color.FgYellow).Sprint("users")
 	}
 	return authCollection
-}
-
-// formatCollections formats collections information for display
-func formatCollections(collections []string) string {
-	if len(collections) == 0 {
-		return color.New(color.FgHiBlack).Sprint("none")
-	}
-
-	if len(collections) == 1 {
-		return collections[0]
-	}
-
-	if len(collections) <= 3 {
-		return strings.Join(collections, ", ")
-	}
-
-	// Show first 2 collections with count indicator
-	return fmt.Sprintf("%s, %s (+%d more)",
-		collections[0], collections[1], len(collections)-2)
 }
 
 // formatLastAuth formats the last authentication time
